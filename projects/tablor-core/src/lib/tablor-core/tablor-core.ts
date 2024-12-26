@@ -1,4 +1,4 @@
-import { AugmentedItem, Item } from '../stores/items-store/interfaces'
+import { AugmentedItem, ImmutableAugmentedItem, Item } from '../stores/items-store/interfaces'
 import { ItemsStore } from '../stores/items-store/items-store'
 import { FieldsStore } from '../stores/fields-store/fields-store'
 import { Selector } from '../selector/selector'
@@ -49,9 +49,10 @@ import { Sorter } from '../sorter/sorter'
  * ---
  *
  * **Get Started**:
- * - **GitHub Repository**: [TablorCore on GitHub](https://github.com/TIPUzee/TablorCore)
+ * - **GitHub Repository**: [TablorCore on GitHub](https://github.com/TIPUzee/tablor-core)
  *   Explore the repository for documentation, examples, and contribution guidelines.
- * - **NPM Package**: Search for `tablor-core` on [npmjs.com](https://www.npmjs.com/) to install and integrate this library into your projects.
+ * - **NPM Package**: Search for `tablor-core` on [npmjs.com](https://www.npmjs.com/)
+ * to install and integrate this library into your projects.
  *
  * ---
  *
@@ -62,13 +63,16 @@ import { Sorter } from '../sorter/sorter'
  * ---
  *
  * **Open Source Contribution**:
- * Developers are encouraged to contribute, enhance functionality, and share ideas. Submit pull requests, raise issues, or provide feedback on GitHub to make this library better for the community.
+ * Developers are encouraged to contribute, enhance functionality, and share ideas.
+ * Submit pull requests, raise issues, or provide feedback on GitHub to make this library better for the community.
  */
 export class TablorCore<T extends Item<T>>
 {
     protected readonly allItems: AugmentedItem<T>[] = []
 
-    protected readonly allSearchedItems: AugmentedItem<T>[][] = []
+    protected readonly allSearchedItems: ImmutableAugmentedItem<T>[][] = []
+
+    protected readonly searchResults: ImmutableAugmentedItem<T>[] = []
 
     protected readonly fieldsStore: FieldsStore<T> = new FieldsStore<T>()
 
@@ -84,6 +88,7 @@ export class TablorCore<T extends Item<T>>
     protected readonly searcher = new Searcher<T>(
         this.allItems,
         this.allSearchedItems,
+        this.searchResults,
         this.fieldsStore,
         this.itemsStore.$itemsAdded,
         this.itemsStore.$itemsRemoved,
@@ -92,15 +97,15 @@ export class TablorCore<T extends Item<T>>
 
     protected readonly sorter = new Sorter<T>(
         this.fieldsStore,
-        this.allItems,
-        this.allSearchedItems,
-        this.itemsStore.$itemsAdded,
-        this.itemsStore.$itemsUpdated,
+        this.searchResults,
         this.searcher.$searchedItemsChanged,
+        this.itemsStore.$itemsAdded,
+        this.itemsStore.$itemsRemoved,
+        this.itemsStore.$itemsUpdated,
     )
 
     protected readonly paginator = new Paginator(
-        this.searcher,
+        this.searchResults,
         this.itemsStore.$itemsRemoved,
         this.itemsStore.$itemsAdded,
         this.searcher.$searchedItemsChanged,
@@ -111,6 +116,28 @@ export class TablorCore<T extends Item<T>>
     constructor() { }
 
 
+    /** ------------ SUBSCRIPTIONS ------------ */
+
+
+    public $itemsAdded = this.itemsStore.$itemsAdded
+    public $itemsRemoved = this.itemsStore.$itemsRemoved
+    public $itemsUpdated = this.itemsStore.$itemsUpdated
+
+    public $itemsSelectionChanged = this.selector.$itemsSelectionChanged
+
+    public $searchedItemsChanged = this.searcher.$searchedItemsChanged
+    public $itemsSearched = this.searcher.$itemsSearched
+    public $searchedOptionsChanged = this.searcher.$searchedOptionsChanged
+
+    public $sortedItemsChanged = this.sorter.$sortedItemsChanged
+    public $itemsSorted = this.sorter.$itemsSorted
+    public $sortingOptionsChanged = this.sorter.$sortingOptionsChanged
+
+    public $paginatedItemsChanged = this.paginator.$paginatedItemsChanged
+    public $pageNbChanged = this.paginator.$pageNbChanged
+    public $nbOfItemsPerPageChanged = this.paginator.$nbOfItemsPerPageChanged
+    public $nbOfTotalPagesChanged = this.paginator.$nbOfTotalPagesChanged
+
     /** ------------ SEARCH METHODS ------------ */
 
     /**
@@ -120,14 +147,14 @@ export class TablorCore<T extends Item<T>>
      * non-searched items.
      *
      * @parameter options - An object with the following properties:
-     *   - `ranges`: An object containing the number ranges for each field (fields as key, array of number ranges
+     *   - `ranges`: An object containing the number ranges for each field (fields as a key, array of number ranges
      *     objects).
      *   - `mustMatchAllFields`: A boolean value indicating whether all fields must match the number ranges.
-     *   - `searchBehavior`: A string value indicating the search behaviour (ClearPrev, SearchInPrev, MergeInPrev).
+     *   - `searchBehavior`: A string value indicating the search behavior (ClearPrev, SearchInPrev, MergeInPrev).
      *   - `revertResultsAtEnd`: A boolean value indicating whether to revert the results at the end of the search.
      *
      * @exampleUsage
-     * ```typescript
+     * ```TypeScript
      * tablor.searchByNumbersRanges({
      *     ranges: {
      *         field1: [{ min: 1, max: 10 }, { min: 20 }],
@@ -149,13 +176,13 @@ export class TablorCore<T extends Item<T>>
      * non-searched items.
      *
      * @parameter options - An object with the following properties:
-     *   - `values`: An object containing the exact values for each field (fields as key, array of exact values).
+     *   - `values`: An object containing the exact values for each field (fields as a key, array of exact values).
      * - `mustMatchAllFields`: A boolean value indicating whether all fields must match the number ranges.
-     *  - `searchBehavior`: A string value indicating the search behaviour (ClearPrev, SearchInPrev, MergeInPrev).
+     *  - `searchBehavior`: A string value indicating the search behavior (ClearPrev, SearchInPrev, MergeInPrev).
      *   - `revertResultsAtEnd`: A boolean value indicating whether to revert the results at the end of the search.
      *
      * @exampleUsage
-     * ```typescript
+     * ```TypeScript
      * tablor.searchByExactValues({
      *     values: {
      *         field1: ['value1', 'value2'],
@@ -212,7 +239,7 @@ export class TablorCore<T extends Item<T>>
      *   **(Default: false)**
      *
      * @exampleUsage
-     * ```typescript
+     * ```TypeScript
      * tablor.searchByStringQuery({
      *     query: 'search query',
      *     includeFields: [],  // Optional
@@ -240,7 +267,7 @@ export class TablorCore<T extends Item<T>>
      *
      * @parameter options - An object with the following properties:
      *   - `query`: A string query.
-     *   - `searchBehavior`: A string value indicating the search behaviour (ClearPrev, SearchInPrev, MergeInPrev).
+     *   - `searchBehavior`: A string value indicating the search behavior (ClearPrev, SearchInPrev, MergeInPrev).
      *   - `revertResultsAtEnd`: A boolean value indicating whether to revert the results at the end of the search.
      *
      * @exampleUsage
@@ -270,7 +297,7 @@ export class TablorCore<T extends Item<T>>
      *   - `revertResultsAtEnd`: A boolean value indicating whether to revert the results at the end of the search.
      *
      * @exampleUsage
-     * ```typescript
+     * ```TypeScript
      * tablor.searchByDateTimesRanges({
      *     ranges: {
      *         hire_date: [
@@ -306,7 +333,7 @@ export class TablorCore<T extends Item<T>>
      * ```
      *
      * @exampleUsage
-     * ```typescript
+     * ```TypeScript
      * tablor.searchByDateTimesRanges({
      *     ranges: {
      *         hire_date: [
@@ -340,7 +367,7 @@ export class TablorCore<T extends Item<T>>
      *     - `item`: The item to evaluate.
      *     - `items`: The list of all items.
      *     and returns a boolean.
-     *   - `searchBehavior`: A string value indicating the search behaviour (ClearPrev, SearchInPrev, MergeInPrev).
+     *   - `searchBehavior`: A string value indicating the search behavior (ClearPrev, SearchInPrev, MergeInPrev).
      *   - `revertResultsAtEnd`: A boolean value indicating whether to revert the results at the end of the search.
      *
      * @exampleUsage
@@ -356,6 +383,17 @@ export class TablorCore<T extends Item<T>>
         = this.searcher.searchByCustomFn.bind(this.searcher)
 
     /**
+     * Clears the current search.
+     *
+     * @exampleUsage
+     * ```TypeScript
+     * tablor.clearSearch()
+     * ```
+     */
+    clearSearch
+        = this.searcher.clearSearch.bind(this.searcher)
+
+    /**
      * Retrieves all the current searched items.
      *
      * @returnings an array of current searched items.
@@ -364,14 +402,14 @@ export class TablorCore<T extends Item<T>>
      * If no search is performed, all the items will be returned.
      *
      * @exampleUsage
-     * ```typescript
+     * ```TypeScript
      * const items = tablor.getSearchedItems()
      * // [
      * //     {
      * //         name: 'John wick',
      * //         surname: 'Doe',
      * //         ...
-     * //         tablorMeta: { uuid: 1, isSelected: false, isLoaded: true } // isLoaded: not yet supported
+     * //         tablorMeta: { uuid: 1, ... }
      * //     },
      * //     ...
      * // ]
@@ -389,13 +427,13 @@ export class TablorCore<T extends Item<T>>
      * //         name: 'John wick',
      * //         surname: 'Doe',
      * //         ...
-     * //         tablorMeta: { uuid: 1, isSelected: false, isLoaded: true } // isLoaded: not yet supported
+     * //         tablorMeta: { uuid: 1, ... }
      * //     },
      * //     {
-     * //         name: 'Unknown',
+     * //         name: 'Alison',
      * //         surname: 'Alison John',
      * //         ...
-     * //         tablorMeta: { uuid: 2, isSelected: false, isLoaded: true } // isLoaded: not yet supported
+     * //         tablorMeta: { uuid: 2, ... }
      * //     },
      * //     ...
      * // ]
@@ -501,9 +539,9 @@ export class TablorCore<T extends Item<T>>
      * @remarks
      * - For `undefined` item, it is ignored.
      * - For `number` item, it is considered as a `tablorMeta.uuid`, and check is performed.
-     * - For `object` item containing `tablorMeta`, it is considered as an `AugmentedItem<T>`, and it's
+     * - For `object` item containing `tablorMeta`, it is considered as an `AugmentedItem<T>`, and its
      * `givenItem.tablorMeta.uuid` is checked.
-     * Note that `givenItem.tablorMeta.isSelected` is not checked, because the
+     * Note that `givenItem.tablorMeta.isSelected` is not checked because the
      * given item might be an outdated copy of the original item.
      * - For any other item, it is ignored.
      *
@@ -512,7 +550,7 @@ export class TablorCore<T extends Item<T>>
      * Selection is identified by the `tablorMeta.isSelected` property.
      *
      * @exampleUsage
-     * ```typescript
+     * ```TypeScript
      * const nbOfSelectedItems = tablor.getNbOfSelectedItemsIn([
      *     { // selected
      *         ...,
@@ -634,7 +672,7 @@ export class TablorCore<T extends Item<T>>
      * -
      *
      * @exampleUsage
-     * ```typescript
+     * ```TypeScript
      * const items = tablor.getPaginatedItems()
      * // [
      * //     {
@@ -699,67 +737,6 @@ export class TablorCore<T extends Item<T>>
      */
     setNbOfItemsPerPage
         = this.paginator.setNbOfItemsPerPage.bind(this.paginator)
-
-    /** ------------ EVENT METHODS  ------------ */
-
-    /**
-     * Adds an event listener.
-     *
-     * @parameters type - The event name.
-     * @parameters cb - The callback function to be executed when the event occurs.
-     *
-     * @throws {Error} Will throw an error if the event type does not correspond to an
-     *                 existing event listener property.
-     *
-     * @exampleUsage
-     * ```TypeScript
-     * tablor.addEventListener('ItemsChanged', (items) => {
-     *     console.log(items)
-     * })
-     * ```
-     */
-    // addEventListener
-    //     = this.events.addEventListener.bind(this.events)
-
-    /**
-     * Removes an event listener.
-     *
-     * @parameters type - The event name.
-     * @parameters cb - The callback function to be removed.
-     *
-     * @throws {Error} Will throw an error if the event type does not correspond to an
-     *                 existing event listener property.
-     *
-     *
-     * @exampleUsage
-     * ```TypeScript
-     * tablor.removeEventListener('ItemsChanged', (items) => {
-     *     console.log(items)
-     * })
-     * ```
-     */
-    // removeEventListener
-    //     = this.events.removeEventListener.bind(this.events)
-
-    /**
-     * Emits an event.
-     *
-     * @parameters type - The event name.
-     * @parameters data - The event data.
-     *
-     * @throws {Error} Will throw an error if the event type does not correspond to an
-     *                 existing event listener property.
-     *
-     * @exampleUsage
-     * ```TypeScript
-     * tablor.emitEventListeners('ItemClicked', {
-     *     ...,
-     *     tablorMeta: { uuid: 1, ... }
-     * })
-     * ```
-     */
-    // emitEventListeners
-    //     = this.events.emitEventListeners.bind(this.events)
 
     /** ------------ FIELDS METHODS  ------------ */
 
@@ -890,7 +867,7 @@ export class TablorCore<T extends Item<T>>
      * - For getting paginated items, use the `getPaginatedItems` method.
      *
      * @exampleUsage
-     * ```typescript
+     * ```TypeScript
      * const users = tablor.getItems()
      * // [
      * //     {
@@ -1003,7 +980,7 @@ export class TablorCore<T extends Item<T>>
      * instead.
      *
      * @exampleUsage
-     * ```typescript
+     * ```TypeScript
      * const itemsAndUuids = [
      *     1, // used as a UUID
      *     2, // used as a UUID
@@ -1011,7 +988,7 @@ export class TablorCore<T extends Item<T>>
      *         ...
      *         tablorMeta: { uuid: 3, ... }
      *     },
-     *     {  // complete object is matched to find it
+     *     {  // the complete object is matched to find it
      *         ...
      *         tablorMeta: undefined
      *     },
@@ -1059,7 +1036,7 @@ export class TablorCore<T extends Item<T>>
      * - For finding a single matching item, use `findOneMatchingItemForEach` instead.
      *
      * @exampleUsage
-     * ```typescript
+     * ```TypeScript
      * const itemsAndUuids = [
      *     1, // used as a UUID
      *     2, // used as a UUID
@@ -1067,7 +1044,7 @@ export class TablorCore<T extends Item<T>>
      *         ...
      *         tablorMeta: { uuid: 3, ... }
      *     },
-     *     {  // complete object is matched to find it
+     *     {  // the complete object is matched to find it
      *         ...
      *         tablorMeta: undefined
      *     },
@@ -1201,7 +1178,7 @@ export class TablorCore<T extends Item<T>>
      * Updates items at specified indexes.
      *
      * @parameters items - An array of partial item objects.
-     * @parameters indexes - An array of indexes of items to update.
+     * @parameters indexes - An array of items' indexes to update.
      *
      * @returnings An array of booleans, each indicating whether the update was successful.
      *
@@ -1244,7 +1221,7 @@ export class TablorCore<T extends Item<T>>
      * ```TypeScript
      * // sorted by a single field
      * const options = tablor.getSortingOptions();
-     * // [{ column: 'name', order: 'ASC' }]
+     * // [{ field: 'name', order: 'ASC', ... }]
      * ```
      *
      * @exampleUsage
@@ -1252,13 +1229,27 @@ export class TablorCore<T extends Item<T>>
      * // sorted by multiple fields
      * const options = tablor.getSortingOptions();
      * // [
-     * //     { column: 'name', order: 'ASC' },
-     * //     { column: 'surname', order: 'ASC' }
+     * //     { field: 'name', order: 'ASC', ... },
+     * //     { field: 'surname', order: 'ASC', ... }
      * // ]
      * ```
      */
     getSortingOptions
         = this.sorter.getOptions.bind(this.sorter)
+
+    /**
+     * Gets the sorted items.
+     *
+     * @returnings An array of sorted items.
+     *
+     * @exampleUsage
+     * ```TypeScript
+     * const items = tablor.getSortedItems();
+     * // [...] // same as searched items
+     * ```
+     */
+    getSortedItems
+        = this.sorter.getItems.bind(this.sorter)
 
     /**
      * Sorts the items.
@@ -1267,13 +1258,31 @@ export class TablorCore<T extends Item<T>>
      *
      * @exampleUsage
      * ```TypeScript
-     * tablor.sort('name', 'ASC');
+     * tablor.sort({
+     *     field: 'name',
+     *     order: 'ASC'
+     * });
      * ```
      *
      * @exampleUsage
      * ```TypeScript
-     * tablor.sort('name', 'ASC');
-     * tablor.sort('surname', 'Toggle');
+     * tablor.sort({
+     *     field: 'name',
+     *     order: 'Toggle'
+     * });
+     * ```
+     *
+     * @exampleUsage
+     * ```TypeScript
+     * tablor.sort({
+     *     field: 'name',
+     *     order: 'ASC'
+     * });
+     *
+     * tablor.sort({
+     *     field: 'surname',
+     *     order: 'Toggle'
+     * });
      * ```
      */
     sort = this.sorter.sort.bind(this.sorter)

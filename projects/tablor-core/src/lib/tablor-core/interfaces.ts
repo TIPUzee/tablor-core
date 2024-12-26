@@ -5,31 +5,67 @@ import {
     RegularField,
     RegularFields,
 } from '../stores/fields-store/interfaces'
+
 import {
     AugmentedItem,
     AugmentedHalfItem,
-    HalfItem,
-    Item, ItemsUpdatedPayload, ItemsRemovedPayload, ItemsAddedPayload,
+    PartialItem,
+    Item,
+    ItemsUpdatedPayload,
+    ItemsRemovedPayload,
+    ItemsAddedPayload,
+    ImmutableAugmentedItem,
+    ImmutableAugmentedPartialRegularItem,
+    ImmutablePartialRegularItem,
+    ImmutableRegularItem,
+    StoreLoadingStateChangedPayload,
+    PrimitiveTypes,
+    DynamicImmutableAugmentedItem,
+    AugItemMetaData,
 } from '../stores/items-store/interfaces'
-import { SampleItemType } from '../test-data/test-data-2'
+
 import {
-    ImmutableSortingOptions,
+    SortingOptionsChangedPayload,
     ItemsSortedPayload,
-    SortingOptions,
-    ProcessedSortingOrder,
-    DraftSortingOrder,
+    SortedItemsChangedPayload,
+    ImmutableProcessedSortingOption,
+    InsertBehavior,
 } from '../sorter/interfaces'
+
 import {
     DraftSearchableOptions,
     ItemsSearchedPayload,
     ProcessedSearchableOptions,
-    SearchedItemsChangedPayload, SearchOptionsChangedPayload,
+    SearchedItemsChangedPayload,
+    SearchOptionsChangedPayload,
+    DraftDateRangeSearchOptions,
+    ProcessedDateTimeRangeSearchOptions,
+    DraftCustomSearchOptions,
+    ProcessedCustomSearchOptions,
+    DraftVoidSearchOptions,
+    ProcessedVoidSearchOptions,
+    DraftStringQuerySearchOptions,
+    ProcessedStringQuerySearchOptions,
+    DraftNumberRangeSearchOptions,
+    ProcessedNumberRangeSearchOptions,
+    DraftExactValueSearchOptions,
+    ProcessedExactValueSearchOptions,
 } from '../searcher/searcher/interfaces'
-import { ItemsSelectionChangedPayload } from '../selector/interfaces'
+
+import {
+    NbOfItemsPerPageChangedPayload,
+    NbOfTotalPagesChangedPayload,
+    PageNbChangedPayload,
+    PaginatedItemsChangedPayload,
+} from '../paginator/interfaces'
+
+import {
+    ItemsSelectionChangedPayload,
+} from '../selector/interfaces'
 
 
 /**
- * **TablorCoreType**
+ * **TablorCoreTypes**
  *
  * A comprehensive type definition that aggregates all public types provided by the TablorCore library.
  *
@@ -45,7 +81,7 @@ import { ItemsSelectionChangedPayload } from '../selector/interfaces'
  * ---
  *
  * **Key Features**:
- * - Includes definitions for core elements like `Field`, `Fields`, and more.
+ * - Includes definitions for core elements like `Field`, `AugmentedItem`, `SortingOptionsChangedPayload`, and more.
  * - Provides full support for generic typing, ensuring flexibility and adaptability.
  * - Enhances developer experience by standardizing type access.
  *
@@ -53,47 +89,91 @@ import { ItemsSelectionChangedPayload } from '../selector/interfaces'
  *
  * **Example Usage**:
  * ```TypeScript
- * const fields: TablorCoreType<MyCustomItem>['Fields'] = tablor.getFields();
+ * import { TablorCoreTypes as TcT } from 'tablor-core';
+ *
+ * type User = {
+ *   name: string;
+ *   age: number;
+ *   email: string;
+ * }
+ *
+ * const tablor = new TcT<User>();
+ * const fields: TcT<User>['Fields'] = tablor.getFields();
  * ```
  *
  * ---
  *
  * **Get Started**:
- * - **GitHub Repository**: [TablorCore on GitHub](https://github.com/TIPUzee/TablorCore)
- * - **NPM Package**: Search for `tablor-core` on [npmjs.com](https://www.npmjs.com/) to integrate this type into your projects.
+ * - **GitHub Repository**: [TablorCore on GitHub](https://github.com/TIPUzee/tablor-core)
+ *   Explore the repository for documentation, examples, and contribution guidelines.
+ * - **NPM Package**: Search for `tablor-core` on [npmjs.com](https://www.npmjs.com/)
+ * to install and integrate this library into your projects.
+ *
+ * ---
  *
  * **Developed by**: Zeeshan Nadeem
  * **GitHub**: [TIPUzee](https://github.com/TIPUzee)
  * **License**: Apache-2.0
+ *
+ * ---
+ *
+ * **Open Source Contribution**:
+ * Developers are encouraged to contribute, enhance functionality, and share ideas.
+ * Submit pull requests, raise issues, or provide feedback on GitHub to make this library better for the community.
  */
-export type TablorCoreType<T extends Item<T>, K extends keyof T = keyof T> = {
+export type TablorCoreTypes<T extends Item<T>, K extends keyof T = keyof T> = {
 
-    Field: RegularField<T>
-    Fields: RegularFields<T>
-    ProcessedField: ProcessedField<T, K>
-    ProcessedFields: ProcessedFields<T>
+    FieldsUpdatedPayload: FieldsUpdatedPayload<T>,
+    ProcessedField: ProcessedField<T, K>,
+    ProcessedFields: ProcessedFields<T>,
+    RegularField: RegularField<T>,
+    RegularFields: RegularFields<T>,
 
-    Item: Item<T>
-    HalfItem: HalfItem<T>
+    AugmentedItem: AugmentedItem<T>,
+    AugmentedHalfItem: AugmentedHalfItem<T>,
+    PartialItem: PartialItem<T>,
+    Item: Item<T>,
+    ItemsUpdatedPayload: ItemsUpdatedPayload<T>,
+    ItemsRemovedPayload: ItemsRemovedPayload<T>,
+    ItemsAddedPayload: ItemsAddedPayload<T>,
+    ImmutableAugmentedItem: ImmutableAugmentedItem<T>,
+    ImmutableAugmentedPartialRegularItem: ImmutableAugmentedPartialRegularItem<T>,
+    ImmutablePartialRegularItem: ImmutablePartialRegularItem<T>,
+    ImmutableRegularItem: ImmutableRegularItem<T>,
+    StoreLoadingStateChangedPayload: StoreLoadingStateChangedPayload<T>,
+    PrimitiveTypes: PrimitiveTypes,
+    DynamicImmutableAugmentedItem: DynamicImmutableAugmentedItem,
+    AugItemMetaData: AugItemMetaData,
 
-    AugmentedItem: AugmentedItem<T>
-    AugmentedHalfItem: AugmentedHalfItem<T>
+    SortingOptionsChangedPayload: SortingOptionsChangedPayload<T>,
+    ItemsSortedPayload: ItemsSortedPayload<T>,
+    SortedItemsChangedPayload: SortedItemsChangedPayload<T>,
+    ImmutableProcessedSortingOption: ImmutableProcessedSortingOption<T, K>,
+    InsertBehavior: InsertBehavior<T, K>,
 
-    ProcessedSearchableOptions: ProcessedSearchableOptions<T>
-    DraftSearchableOptions: DraftSearchableOptions<T>
+    DraftSearchableOptions: DraftSearchableOptions<T>,
+    ItemsSearchedPayload: ItemsSearchedPayload<T>,
+    ProcessedSearchableOptions: ProcessedSearchableOptions<T>,
+    SearchedItemsChangedPayload: SearchedItemsChangedPayload<T>,
+    SearchOptionsChangedPayload: SearchOptionsChangedPayload<T>,
+    DraftDateRangeSearchOptions: DraftDateRangeSearchOptions<T>,
+    ProcessedDateTimeRangeSearchOptions: ProcessedDateTimeRangeSearchOptions<T>,
+    DraftCustomSearchOptions: DraftCustomSearchOptions<T>,
+    ProcessedCustomSearchOptions: ProcessedCustomSearchOptions<T>,
+    DraftVoidSearchOptions: DraftVoidSearchOptions<T>,
+    ProcessedVoidSearchOptions: ProcessedVoidSearchOptions<T>,
+    DraftStringQuerySearchOptions: DraftStringQuerySearchOptions<T>,
+    ProcessedStringQuerySearchOptions: ProcessedStringQuerySearchOptions<T>,
+    DraftNumberRangeSearchOptions: DraftNumberRangeSearchOptions<T>,
+    ProcessedNumberRangeSearchOptions: ProcessedNumberRangeSearchOptions<T>,
+    DraftExactValueSearchOptions: DraftExactValueSearchOptions<T>,
+    ProcessedExactValueSearchOptions: ProcessedExactValueSearchOptions<T>,
 
-    FieldsUpdatedPayload: FieldsUpdatedPayload<T>
-    ItemsAddedPayload: ItemsAddedPayload<T>
-    ItemsRemovedPayload: ItemsRemovedPayload<T>
-    ItemsUpdatedPayload: ItemsUpdatedPayload<T>
-    ItemsSelectionChangedPayload: ItemsSelectionChangedPayload<T>
-    ItemsSearchedPayload: ItemsSearchedPayload<T>
-    SearchedItemsChangedPayload: SearchedItemsChangedPayload<T>
-    SearchOptionsChangedPayload: SearchOptionsChangedPayload<T>
+    NbOfItemsPerPageChangedPayload: NbOfItemsPerPageChangedPayload<T>,
+    NbOfTotalPagesChangedPayload: NbOfTotalPagesChangedPayload<T>,
+    PageNbChangedPayload: PageNbChangedPayload<T>,
+    PaginatedItemsChangedPayload: PaginatedItemsChangedPayload<T>,
 
-    ItemsSortedPayload: ItemsSortedPayload<T>
-    ImmutableSortingOptions: ImmutableSortingOptions<T>
-    SortingOptions: SortingOptions<T>
-    SortingOrder: ProcessedSortingOrder
-    SortingOrderMode: DraftSortingOrder
+    ItemsSelectionChangedPayload: ItemsSelectionChangedPayload<T>,
+
 }

@@ -55,11 +55,11 @@ export class Searcher<T extends Item<T>>
     constructor(
         protected readonly allItems: AugmentedItem<T>[],
         protected readonly allSearchedItems: ImmutableAugmentedItem<T>[][],
+        protected readonly searchResults: ImmutableAugmentedItem<T>[],
         protected readonly fieldsStore: FieldsStore<T>,
         protected readonly $itemsAdded: Subject<ItemsAddedPayload<T>>,
         protected readonly $itemsRemoved: Subject<ItemsRemovedPayload<T>>,
         protected readonly $itemsUpdated: Subject<ItemsUpdatedPayload<T>>,
-
     )
     {
         this.stringQuerySearcher = new StringQuerySearcher(
@@ -91,12 +91,41 @@ export class Searcher<T extends Item<T>>
      */
     public getItems(): ImmutableAugmentedItem<T>[]
     {
-        if (this.allSearchedItems.length > 0)
-        {
-            return this.allSearchedItems[this.allSearchedItems.length - 1]
-        }
+        return this.searchResults
+    }
 
-        return this.allItems
+
+    /**
+     * Clears the search.
+     */
+    public clearSearch(): void
+    {
+        const prevSearchResults = this.getItems()
+        const prevSearchOptions = this._options
+
+        this._options.length = 0
+        this.allSearchedItems.length = 0
+        this.makeNewSearchResults()
+
+        if (prevSearchOptions.length !== this._options.length)
+        {
+            this.$searchedItemsChanged.next({
+                searchResults: this.getItems(),
+                prevSearchResults: prevSearchResults,
+            })
+
+            this.$searchedOptionsChanged.next({
+                options: this._options,
+                prevOptions: prevSearchOptions,
+            })
+
+            this.$itemsSearched.next({
+                options: this._options,
+                prevOptions: prevSearchOptions,
+                searchResults: this.getItems(),
+                prevSearchResults: prevSearchResults,
+            })
+        }
     }
 
 
@@ -200,6 +229,8 @@ export class Searcher<T extends Item<T>>
         this.allSearchedItems.push(newlySearchedItems)
         this._options.push(processedOptions)
 
+        this.makeNewSearchResults()
+
         this.$itemsSearched.next({
             options: this.getOptions(),
             prevOptions,
@@ -219,7 +250,30 @@ export class Searcher<T extends Item<T>>
     }
 
 
-    onItemsRemoved({ removedItems }: ItemsRemovedPayload<T>): void
+    protected makeNewSearchResults(): void
+    {
+        if (this.allSearchedItems.length === 0)
+        {
+            this.searchResults.splice(0, this.searchResults.length, ...this.allItems)
+            return
+        }
+
+        const searchedItemsResults: ImmutableAugmentedItem<T>[][] = []
+
+        for (let i = this.allSearchedItems.length - 1; i >= 0; i--)
+        {
+            searchedItemsResults.push(this.allSearchedItems[i])
+            if (this._options[i].searchTarget.scope === 'Prev')
+                break
+        }
+
+        searchedItemsResults.reverse()
+
+        this.searchResults.splice(0, this.searchResults.length, ...Array.from(new Set(searchedItemsResults.flat())))
+    }
+
+
+    protected onItemsRemoved({ removedItems }: ItemsRemovedPayload<T>): void
     {
         const prevSearchResults = this.getItems()
 
@@ -229,6 +283,8 @@ export class Searcher<T extends Item<T>>
                 item => !removedItems.includes(item),
             )
         }
+
+        this.makeNewSearchResults()
 
         if (prevSearchResults.length !== this.getItems().length)
         {
@@ -240,7 +296,7 @@ export class Searcher<T extends Item<T>>
     }
 
 
-    onItemsAdded({ addedItems }: ItemsAddedPayload<T>): void
+    protected onItemsAdded({ addedItems }: ItemsAddedPayload<T>): void
     {
         const prevSearchResults = this.getItems()
 
@@ -278,6 +334,8 @@ export class Searcher<T extends Item<T>>
             prevAddedItems = itemsToAdd
         }
 
+        this.makeNewSearchResults()
+
         if (prevSearchResults.length !== this.getItems().length)
         {
             this.$searchedItemsChanged.next({
@@ -288,7 +346,7 @@ export class Searcher<T extends Item<T>>
     }
 
 
-    onItemsUpdated({ updatedItems }: ItemsUpdatedPayload<T>): void
+    protected onItemsUpdated({ updatedItems }: ItemsUpdatedPayload<T>): void
     {
         if (updatedItems.length === 0) return
 
@@ -343,6 +401,8 @@ export class Searcher<T extends Item<T>>
             }
         }
 
+        this.makeNewSearchResults()
+
         if (anythingChanged || prevSearchResults.length !== this.getItems().length)
             this.$searchedItemsChanged.next({
                 searchResults: this.getItems(),
@@ -388,6 +448,8 @@ export class Searcher<T extends Item<T>>
      */
     protected getTargetItems(options: ProcessedSearchableOptions<T>): ImmutableAugmentedItem<T>[]
     {
+        if (this.getOptions().length === 0) return this.allItems
+
         if (options.searchTarget.scope === 'All')
             return this.allItems
 
@@ -505,6 +567,7 @@ export class Searcher<T extends Item<T>>
 
     /**
      * Resolves an index for searchable options.
+     * Makes sure that the index is not out of bounds.
      */
     protected resolveIndex(index: number | 'Last' | 'LastIfSameType'): number
     {

@@ -30,7 +30,7 @@ export class ItemsStore<T extends Item<T>>
         protected readonly fieldsStore: FieldsStore<T>,
     )
     {
-        if (this.allItems.length !== 0) throw new Error('DataStore: The provided allItems should be an empty array.')
+        if (this.allItems.length !== 0) throw new Error('ItemsStore: The provided allItems should be an empty array.')
 
         this.setLoading = this.setLoading.bind(this)
     }

@@ -1,7 +1,7 @@
 import { describe } from '@jest/globals'
 import { TablorCore } from './tablor-core'
 import { SampleItemType, SampleItemFields, SampleItems } from '../test-data/test-data-4'
-import { TablorCoreType } from './interfaces'
+import { TablorCoreTypes } from './interfaces'
 import { FieldsStore } from '../stores/fields-store/fields-store'
 
 

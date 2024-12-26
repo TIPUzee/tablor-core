@@ -9,8 +9,9 @@ import { Sorter } from '../sorter/sorter'
 
 describe('NvPaginator', () =>
 {
-    let allItems: AugmentedItem<SampleItemType>[]
+        let allItems: AugmentedItem<SampleItemType>[]
     let allSearchedItems: AugmentedItem<SampleItemType>[][]
+    let searchResults: AugmentedItem<SampleItemType>[]
     let itemsStore: ItemsStore<SampleItemType>
     let fieldsStore: FieldsStore<SampleItemType>
     let sorter: Sorter<SampleItemType>
@@ -20,6 +21,7 @@ describe('NvPaginator', () =>
     beforeEach(() =>
     {
         allItems = []
+        searchResults = []
         allSearchedItems = []
 
         fieldsStore = new FieldsStore<SampleItemType>()
@@ -29,6 +31,7 @@ describe('NvPaginator', () =>
         searcher = new Searcher<SampleItemType>(
             allItems,
             allSearchedItems,
+            searchResults,
             fieldsStore,
             itemsStore.$itemsAdded,
             itemsStore.$itemsRemoved,
@@ -37,20 +40,21 @@ describe('NvPaginator', () =>
 
         sorter = new Sorter<SampleItemType>(
             fieldsStore,
-            allItems,
-            allSearchedItems,
-            itemsStore.$itemsAdded,
-            itemsStore.$itemsUpdated,
+            searchResults,
             searcher.$searchedItemsChanged,
+            itemsStore.$itemsAdded,
+            itemsStore.$itemsRemoved,
+            itemsStore.$itemsUpdated,
         )
 
         paginator = new Paginator<SampleItemType>(
-            searcher,
+            searchResults,
             itemsStore.$itemsRemoved,
             itemsStore.$itemsAdded,
             searcher.$searchedItemsChanged,
             sorter.$sortingOptionsChanged,
         )
+
         paginator.setNbOfItemsPerPage(3)
 
         fieldsStore.initialize(SampleItemFields)

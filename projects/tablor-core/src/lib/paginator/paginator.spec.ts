@@ -17,7 +17,9 @@ import { Sorter } from '../sorter/sorter'
 describe('NvPaginator', () =>
 {
     let allItems: AugmentedItem<SampleItemType>[]
+    let searchResults: AugmentedItem<SampleItemType>[]
     let allSearchedItems: AugmentedItem<SampleItemType>[][]
+
     let itemsStore: ItemsStore<SampleItemType>
     let fieldsStore: FieldsStore<SampleItemType>
     let sorter: Sorter<SampleItemType>
@@ -27,7 +29,9 @@ describe('NvPaginator', () =>
     beforeEach(() =>
     {
         allItems = []
+        searchResults = []
         allSearchedItems = []
+
         fieldsStore = new FieldsStore<SampleItemType>()
 
         itemsStore = new ItemsStore<SampleItemType>(allItems, fieldsStore)
@@ -35,6 +39,7 @@ describe('NvPaginator', () =>
         searcher = new Searcher<SampleItemType>(
             allItems,
             allSearchedItems,
+            searchResults,
             fieldsStore,
             itemsStore.$itemsAdded,
             itemsStore.$itemsRemoved,
@@ -43,15 +48,15 @@ describe('NvPaginator', () =>
 
         sorter = new Sorter<SampleItemType>(
             fieldsStore,
-            allItems,
-            allSearchedItems,
-            itemsStore.$itemsAdded,
-            itemsStore.$itemsUpdated,
+            searchResults,
             searcher.$searchedItemsChanged,
+            itemsStore.$itemsAdded,
+            itemsStore.$itemsRemoved,
+            itemsStore.$itemsUpdated,
         )
 
         paginator = new Paginator<SampleItemType>(
-            searcher,
+            searchResults,
             itemsStore.$itemsRemoved,
             itemsStore.$itemsAdded,
             searcher.$searchedItemsChanged,
@@ -71,20 +76,32 @@ describe('NvPaginator', () =>
     test('should have correct default values', () =>
     {
         allItems = []
+        allSearchedItems = []
+        searchResults = []
 
         itemsStore = new ItemsStore<SampleItemType>(allItems, fieldsStore)
 
         searcher = new Searcher<SampleItemType>(
             allItems,
             allSearchedItems,
+            searchResults,
             fieldsStore,
             itemsStore.$itemsAdded,
             itemsStore.$itemsRemoved,
             itemsStore.$itemsUpdated,
         )
 
+        sorter = new Sorter<SampleItemType>(
+            fieldsStore,
+            searchResults,
+            searcher.$searchedItemsChanged,
+            itemsStore.$itemsAdded,
+            itemsStore.$itemsRemoved,
+            itemsStore.$itemsUpdated,
+        )
+
         paginator = new Paginator<SampleItemType>(
-            searcher,
+            searchResults,
             itemsStore.$itemsRemoved,
             itemsStore.$itemsAdded,
             searcher.$searchedItemsChanged,
@@ -165,7 +182,7 @@ describe('NvPaginator', () =>
         ])
     })
 
-    test('should have correct values after all paged-rows removal', () =>
+    test('should have correct values after all paged-rows removals', () =>
     {
         itemsStore.remove([
             itemsStore.getItems()[0], itemsStore.getItems()[1], itemsStore.getItems()[2],
@@ -388,7 +405,7 @@ describe('NvPaginator', () =>
         expect(paginator.getPageSize()).toBe(10)
 
         expect(paginator.getItems()).toEqual(
-            allItems.filter(item => item.id > 10),
+            searchResults.filter(item => item.id > 10),
         )
     })
 })

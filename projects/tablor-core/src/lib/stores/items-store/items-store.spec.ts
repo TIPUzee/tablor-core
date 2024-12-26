@@ -4,7 +4,7 @@ import { AugmentedItem, ImmutableAugmentedItem } from './interfaces'
 import { SampleItemFields, SampleItemType, SampleItems } from '../../test-data/test-data-2'
 
 
-describe('DataStore', () =>
+describe('ItemStore', () =>
 {
     let allItems: AugmentedItem<SampleItemType>[]
     let fieldsStore: FieldsStore<SampleItemType>
@@ -29,13 +29,13 @@ describe('DataStore', () =>
         test('should throw an error if initialized with non-empty allItems', () =>
         {
             // @ts-ignore
-            const invalidDataRef: List<AugmentedItem<SampleItemType>> = [{}]
+            const InvalidItemRef: List<AugmentedItem<SampleItemType>> = [{}]
 
             expect(() => new ItemsStore(
-                invalidDataRef,
+                InvalidItemRef,
                 fieldsStore,
             )).toThrow(
-                'DataStore: The provided allItems should be an empty array.',
+                'ItemsStore: The provided allItems should be an empty array.',
             )
         })
     })

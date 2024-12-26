@@ -1,19 +1,23 @@
 import {
     AugmentedItem,
-    ItemsAddedPayload,
-    ItemsUpdatedPayload,
-    Item,
     ImmutableAugmentedItem,
+    Item,
+    ItemsAddedPayload, ItemsRemovedPayload,
+    ItemsUpdatedPayload,
 } from '../stores/items-store/interfaces'
 import { FieldsStore } from '../stores/fields-store/fields-store'
 import { Subject } from 'rxjs'
 import {
     DraftSortingOption,
     ImmutableProcessedSortingOption,
+    InsertBehavior, ItemsSortedPayload,
     ProcessedSortingOptions,
+    ProcessedSortingOptionsWithMeta, SortedItemsChangedPayload,
     SortingOptionsChangedPayload,
+    SortRange,
 } from './interfaces'
 import { SearchedItemsChangedPayload } from '../searcher/searcher/interfaces'
+import { defaultCompareFn } from './sorter-utils'
 
 
 /**
@@ -22,75 +26,72 @@ import { SearchedItemsChangedPayload } from '../searcher/searcher/interfaces'
 export class Sorter<T extends Item<T>>
 {
     protected readonly _options: ProcessedSortingOptions<T, keyof T>[] = []
+    protected readonly _sortingRanges: SortRange[][] = []
 
     public readonly $sortingOptionsChanged = new Subject<SortingOptionsChangedPayload<T>>()
+    public readonly $itemsSorted = new Subject<ItemsSortedPayload<T>>()
+    public readonly $sortedItemsChanged = new Subject<SortedItemsChangedPayload<T>>()
 
 
     constructor(
         protected readonly fieldsStore: FieldsStore<T>,
-        protected readonly allItems: AugmentedItem<T>[],
-        protected readonly searchedItems: Readonly<ImmutableAugmentedItem<T>[][]>,
-        protected readonly $itemsAdded: Subject<ItemsAddedPayload<T>>,
-        protected readonly $itemsUpdated: Subject<ItemsUpdatedPayload<T>>,
+        protected readonly searchResults: AugmentedItem<T>[],
         protected readonly $searchedItemsChanged: Subject<SearchedItemsChangedPayload<T>>,
+        protected readonly $itemsAdded: Subject<ItemsAddedPayload<T>>,
+        protected readonly $itemsRemoved: Subject<ItemsRemovedPayload<T>>,
+        protected readonly $itemsUpdated: Subject<ItemsUpdatedPayload<T>>,
     )
     {
-        this.initializeEventListeners()
+        this.$searchedItemsChanged.subscribe(this.handleSearchedItemsChange.bind(this))
+        this.$itemsRemoved.subscribe(this.handleSearchedItemsChange.bind(this))
+        this.$itemsAdded.subscribe(this.handleSearchedItemsChange.bind(this))
+        this.$itemsUpdated.subscribe(this.handleSearchedItemsChange.bind(this))
     }
 
 
     /**
-     * Initializes event listeners so that whenever an item is added or updated, the sorter will re-sort the items.
+     * Returns the current sorting options
      */
-    protected initializeEventListeners(): void
+    public getOptions(): Readonly<ImmutableProcessedSortingOption<T, keyof T>[]>
     {
-        const callback = () =>
-        {
-            if (this._options.length === 0) return
-
-            this.sortAllItems(0)
-        }
-
-        this.$itemsAdded.subscribe(callback)
-        this.$itemsUpdated.subscribe(callback)
-        this.$searchedItemsChanged.subscribe(callback)
+        return this._options
     }
 
 
     /**
-     * Returns the current sorting options as an immutable array.
+     * Returns the current sorted items
      */
-    public getOptions(includeDisabled = true): Readonly<Readonly<ImmutableProcessedSortingOption<T, keyof T>>[]>
+    public getItems(): ImmutableAugmentedItem<T>[]
     {
-        return this._options.filter(
-            option => includeDisabled || !option.disabled,
-        )
+        return this.searchResults
     }
 
 
     /**
-     * Clears the current sorting options.
+     * Returns the current sorting ranges
      *
      * @remarks
-     * This method will re-order the items to their original order, by tablorMeta.uuid, because it is generated in order.
+     * This method is only for testing purposes
      */
-    public clearSort<K extends keyof T>(field?: K): void
+    protected getSortingRanges(): Readonly<Readonly<Readonly<SortRange>[]>[]>
+    {
+        return this._sortingRanges
+    }
+
+
+    /**
+     * Clears the sorting
+     */
+    public clearSort(): void
     {
         const prevOptions = [...this._options]
+        this._options.splice(0)
+        this._sortingRanges.splice(0)
 
-        if (field)
-        {
-            const index = this._options.findIndex(option => option.field === field)
+        const sortFn: (a: ImmutableAugmentedItem<T>, b: ImmutableAugmentedItem<T>) => number
+            = (a, b) => (a.tablorMeta.uuid - b.tablorMeta.uuid)
 
-            this._options.splice(index, 1)
-
-            this.sortAllItems(index)
-        }
-        else
-        {
-            this._options.splice(0, this._options.length)
-            this.allItems.sort((a, b) => a.tablorMeta.uuid - b.tablorMeta.uuid)
-        }
+        this.searchResults.sort(sortFn)
 
         this.$sortingOptionsChanged.next({
             options: this._options,
@@ -99,224 +100,183 @@ export class Sorter<T extends Item<T>>
     }
 
 
-    sortAllItems(optionIndex: number): void
-    {
-        const items = [this.allItems, ...this.searchedItems]
-
-        for (let i = 0; i < items.length; i++)
-        {
-            for (let j = optionIndex; j < this.getOptions().length; j++)
-            {
-                this.sortInternal(j, items[i], i === optionIndex)
-            }
-        }
-    }
-
-
     /**
-     * Sorts the items by the given options.
+     * Sorts the items based on the provided options.
      */
     public sort<K extends keyof T>(options: DraftSortingOption<T, K>): void
     {
-        const processedOptions = this.processOptions(options)
-
         const prevOptions = [...this._options]
+        const prevSortedItems = [...this.searchResults]
 
-        this.performNewAndPrevSortedFieldsBehavior(processedOptions)
+        const processedOptions = this.processOptionsWithMeta(options)
 
-        const optionIndex = this._options.findIndex(option => option.field === processedOptions.field)
+        const optionsIndex = this.addNewOptions(processedOptions)
 
-        this.sortAllItems(optionIndex)
+        for (let currOptionsIndex = optionsIndex; currOptionsIndex < this._options.length; currOptionsIndex++)
+        {
+            this.sortItems(currOptionsIndex)
+        }
 
         this.$sortingOptionsChanged.next({
             options: this._options,
-            prevOptions,
+            prevOptions: prevOptions,
+        })
+
+        this.$itemsSorted.next({
+            items: this.searchResults,
+            prevItems: prevSortedItems,
+        })
+
+        this.$sortedItemsChanged.next({
+            items: this.searchResults,
+            prevItems: prevSortedItems,
         })
     }
 
 
     /**
-     * Sorts the items by the given options index.
+     * Sorts the items based on the current sorting options.
      */
-    protected sortInternal(optionIndex: number, items: ImmutableAugmentedItem<T>[], forceSort = false): void
+    protected sortItems<K extends keyof T>(optionsIndex: number): void
     {
-        const option = this._options[optionIndex]
-        if (option.disabled && !forceSort) return
+        this._sortingRanges.splice(optionsIndex, this._sortingRanges.length)
 
-        let superOption: ImmutableProcessedSortingOption<T, keyof T> | undefined = this.getOptions(false)[optionIndex -
-        1]
+        const currOptions: ImmutableProcessedSortingOption<T, K> = this._options[optionsIndex] as any
 
-        const superField = superOption !== undefined ? superOption.field : undefined
-        const field = option.field
-        const order = option.order
+        const currCompareFn: ProcessedSortingOptions<T, K>['customCompareFn'] =
+            currOptions.order === 'ORIGINAL' ?
+            (a, b) => (a.tablorMeta.uuid - b.tablorMeta.uuid) * -1 : currOptions.customCompareFn
 
-        const superOptionCompareFnForNestedMatch =
-            superOption !== undefined ? superOption.customCompareFnForNestedMatch : () => true
+        const currCompareFnForNestedMatch: ProcessedSortingOptions<T, K>['customCompareFnForNestedMatch'] =
+            currOptions.order === 'ORIGINAL' ?
+            (a, b) => (a.tablorMeta.uuid - b.tablorMeta.uuid) * -1 :
+            currOptions.customCompareFnForNestedMatch
 
-        const optionCompareFn = option.customCompareFn
+        if (optionsIndex === 0)
+        {
+            const sortedItems = this.applySort(
+                this.searchResults,
+                currCompareFn,
+                optionsIndex,
+            )
 
-        let sortFn: (a: ImmutableAugmentedItem<T>, b: ImmutableAugmentedItem<T>) => number
+            this.searchResults.splice(0, this.searchResults.length, ...sortedItems)
 
-        if (option.order === 'ORIGINAL')
-            sortFn = (a, b) => a.tablorMeta.uuid - b.tablorMeta.uuid
+            this._sortingRanges.splice(
+                0, this._sortingRanges.length,
+                this.makeSortingRangesForNestedSortingOptions(
+                    this.searchResults,
+                    currCompareFnForNestedMatch,
+                    currOptions,
+                ),
+            )
+        }
         else
-            sortFn = (a, b) => optionCompareFn(a[field], b[field], option) * (order === 'ASC' ? 1 : -1)
-
-        if (superOption === undefined)
         {
-            this.sortInRange(
-                sortFn,
-                0,
-                items.length,
-                items,
-            )
-            return
-        }
-
-        let nestedRangeStartIndex = 0
-
-        for (let i = 1; i < items.length + 1; i++)
-        {
-            if (
-                i === items.length ||
-                superOptionCompareFnForNestedMatch(
-                    items[nestedRangeStartIndex][superField as keyof T],
-                    items[i][superField as keyof T],
-                    option,
-                ) !== 0
-            )
+            for (let range of this._sortingRanges[optionsIndex - 1])
             {
-                this.sortInRange(
-                    sortFn,
-                    nestedRangeStartIndex,
-                    i,
-                    items,
+                const sortedItems = this.applySort(
+                    this.searchResults.slice(range.start, range.end),
+                    currCompareFn,
+                    optionsIndex,
                 )
-                nestedRangeStartIndex = i
+
+                this.searchResults.splice(range.start, range.end - range.start, ...sortedItems)
             }
+
+            this._sortingRanges.splice(
+                optionsIndex, this._sortingRanges.length,
+                this.makeSortingRangesForNestedSortingOptions(
+                    this.searchResults,
+                    currCompareFnForNestedMatch,
+                    currOptions,
+                ),
+            )
         }
     }
 
 
     /**
-     * Default compare function.
+     * Creates sorting ranges for nested sorting options.
      */
-    protected defaultCompareFn<K extends keyof T>(
-        a: T[K],
-        b: T[K],
-        options: ImmutableProcessedSortingOption<T, K>,
-    ): number
-    {
-        const {
-            prioritizeNulls,
-            prioritizeUndefineds,
-            ignoreDecimalsIfNumber,
-            ignoreWhitespacesIfString,
-            isCaseSensitiveIfString,
-        } = options
-
-        // Handle null-specific options
-        if (a === null || b === null)
-        {
-            if (a === b) return 0
-            if (prioritizeNulls)
-            {
-                if (prioritizeNulls === 'AlwaysFirst' || prioritizeNulls === 'FirstOnASC')
-                    return a === null ? -1 : 1
-
-                if (prioritizeNulls === 'AlwaysLast' || prioritizeNulls === 'LastOnASC')
-                    return b === null ? -1 : 1
-            }
-        }
-
-        // Handle undefined-specific options
-        if (a === undefined || b === undefined)
-        {
-            if (a === b) return 0
-            if (prioritizeUndefineds)
-            {
-                if (prioritizeUndefineds === 'AlwaysFirst' || prioritizeUndefineds === 'FirstOnASC')
-                    return a === null ? -1 : 1
-
-                if (prioritizeUndefineds === 'AlwaysLast' || prioritizeUndefineds === 'LastOnASC')
-                    return b === null ? -1 : 1
-            }
-        }
-
-        // Handle string-specific options
-        if (typeof a === 'string' && typeof b === 'string')
-        {
-            let strA: string = a
-            let strB: string = b
-
-            if (ignoreWhitespacesIfString)
-            {
-                strA = strA.trim()
-                strB = strB.trim()
-            }
-
-            if (!isCaseSensitiveIfString)
-            {
-                strA = strA.toLowerCase()
-                strB = strB.toLowerCase()
-            }
-
-            if (strA === strB) return 0
-            return strA < strB ? -1 : 1
-        }
-
-        // Handle number-specific options
-        if (typeof a === 'number' && typeof b === 'number')
-        {
-            let numA: number = a
-            let numB: number = b
-
-            if (ignoreDecimalsIfNumber)
-            {
-                numA = Math.trunc(numA)
-                numB = Math.trunc(numB)
-            }
-
-            if (numA === numB) return 0
-            return numA < numB ? -1 : 1
-        }
-
-        // Handle date-specific options
-        if (a as Date instanceof Date && b as Date instanceof Date)
-        {
-            if ((a as Date).getTime() === (b as Date).getTime()) return 0
-            return (a as Date).getTime() < (b as Date).getTime() ? -1 : 1
-        }
-
-        // Default comparison
-        if (a === b) return 0
-        return a < b ? -1 : 1
-    }
-
-
-    /**
-     * Sorts the items in the given range by the given compare function.
-     */
-    protected sortInRange(
-        compareFn: (a: ImmutableAugmentedItem<T>, b: ImmutableAugmentedItem<T>) => number,
-        start: number, end: number,
+    protected makeSortingRangesForNestedSortingOptions<K extends keyof T>(
         items: ImmutableAugmentedItem<T>[],
-    ): void
+        currCompareFnForNestedMatch: ProcessedSortingOptions<T, K>['customCompareFnForNestedMatch'],
+        currOptions: ImmutableProcessedSortingOption<T, K>,
+        currOptionsIndex: number = 0,
+    ): SortRange[]
     {
-        if (start === end) return
+        const sortingRanges: SortRange[] = []
 
-        const range = items.slice(start, end)
+        const superRanges: SortRange[] =
+            currOptionsIndex === 0 ?
+                [{ start: 0, end: this.searchResults.length }] :
+            this._sortingRanges[currOptionsIndex - 1]
 
-        range.sort(compareFn)
+        for (let range of superRanges)
+        {
+            let start = range.start
+            for (let i = start + 1; i < range.end; i++)
+            {
+                const areSame = currCompareFnForNestedMatch(
+                    items[start],
+                    items[i],
+                    currOptions,
+                ) === 0
 
-        items.splice(start, range.length, ...range)
+                if (i === range.end - 1)
+                {
+                    if (areSame)
+                    {
+                        sortingRanges.push({ start, end: i + 1 })
+                    }
+                    else
+                    {
+                        sortingRanges.push({ start, end: i })
+                        sortingRanges.push({ start: i, end: i + 1 })
+                    }
+                }
+                else if (!areSame)
+                {
+                    sortingRanges.push({ start, end: i })
+                    start = i
+                }
+            }
+        }
+
+        return sortingRanges
     }
 
 
     /**
-     * Transforms the given draft options into processed options.
+     * Sorts the items based on the given compare function.
      */
-    protected processOptions<K extends keyof T>(options: DraftSortingOption<T, K>): ImmutableProcessedSortingOption<T, K>
+    protected applySort<K extends keyof T>(
+        items: ImmutableAugmentedItem<T>[],
+        compareFn: ProcessedSortingOptions<T, K>['customCompareFn'],
+        optionsIndex: number,
+    ): ImmutableAugmentedItem<T>[]
+    {
+        if (items.length <= 1) return items
+
+        const options: ProcessedSortingOptions<T, K> = this._options[optionsIndex] as any
+
+        const orderedCompareFn: (a: ImmutableAugmentedItem<T>, b: ImmutableAugmentedItem<T>) => number =
+            (a, b) =>
+            {
+                return compareFn(a, b, options) * (options.order === 'ASC' ? 1 : -1)
+            }
+
+        items.sort(orderedCompareFn)
+
+        return items
+    }
+
+
+    /**
+     * Transforms the given draft options into processed options with meta-data.
+     */
+    protected processOptionsWithMeta<K extends keyof T>(options: DraftSortingOption<T, K>): ProcessedSortingOptionsWithMeta<T, K>
     {
         const prevIndex = this.getOptions().findIndex(
             option => option.field === options.field,
@@ -328,41 +288,69 @@ export class Sorter<T extends Item<T>>
             ORIGINAL: 'ASC',
         }
 
-        const newOptions: ImmutableProcessedSortingOption<T, K> = {
+        const newOptions: ProcessedSortingOptionsWithMeta<T, K> = {
             field: options.field,
 
             order:
                 options.order === 'Toggle' ?
-                (prevIndex === -1 ? 'ASC' : nextOrder[this.getOptions()[prevIndex].order]) :
+                (
+                    prevIndex === -1 ?
+                    (options.firstOrderOnToggle !== undefined ? options.firstOrderOnToggle : 'ASC') :
+                    (nextOrder[this.getOptions()[prevIndex].order])
+                ) :
                 options.order,
 
-            disabled: false,
+            stringOptions: {
+                isCaseSensitiveIfString:
+                    options.stringOptions?.isCaseSensitiveIfString !== undefined ?
+                    options.stringOptions.isCaseSensitiveIfString :
+                    false,
 
-            insertBehavior:
-                options.insertBehavior !== undefined ?
-                options.insertBehavior : { action: 'Mutate', scope: 'Single', target: 'OptionWithSameField' },
+                ignoreWhitespacesIfString:
+                    options.stringOptions?.ignoreWhitespacesIfString !== undefined ?
+                    options.stringOptions.ignoreWhitespacesIfString :
+                    true,
+            },
 
-            isCaseSensitiveIfString:
-                options.isCaseSensitiveIfString !== undefined ? options.isCaseSensitiveIfString : false,
-
-            ignoreWhitespacesIfString:
-                options.ignoreWhitespacesIfString !== undefined ? options.ignoreWhitespacesIfString : false,
-
-            ignoreDecimalsIfNumber:
-                options.ignoreDecimalsIfNumber !== undefined ? options.ignoreDecimalsIfNumber : false,
+            numberOptions: {
+                ignoreDecimalsIfNumber:
+                    options.numberOptions?.ignoreDecimalsIfNumber !== undefined ?
+                    options.numberOptions.ignoreDecimalsIfNumber : false,
+            },
 
             customCompareFn:
-                options.customCompareFn === undefined ? this.defaultCompareFn : options.customCompareFn,
+                options.customCompareFn === undefined ? defaultCompareFn : options.customCompareFn,
 
             customCompareFnForNestedMatch:
-                options.customCompareFnForNestedMatch === undefined ?
-                this.defaultCompareFn : options.customCompareFnForNestedMatch,
+                options.customCompareFnForNestedMatch === undefined ? (...args: any) =>
+                {
+                    // @ts-ignore
+                    return defaultCompareFn(...args)
+                } : options.customCompareFnForNestedMatch,
 
             prioritizeNulls:
                 options.prioritizeNulls !== undefined ? options.prioritizeNulls : 'FirstOnASC',
 
             prioritizeUndefineds:
                 options.prioritizeUndefineds !== undefined ? options.prioritizeUndefineds : 'FirstOnASC',
+
+            insertBehavior:
+                options.insertBehavior !== undefined ?
+                options.insertBehavior : {
+                        strategy: 'PresetPosition',
+                        target: 'SameType',
+                        action: 'Replace',
+                        notFoundBehavior: {
+                            strategy: 'PresetPosition',
+                            action: 'Push',
+                            target: 'End',
+                        },
+                    },
+
+            clear: {
+                target:
+                    options.clear?.target !== undefined ? options.clear.target : undefined,
+            },
         }
 
         if (options.processingCallback)
@@ -377,39 +365,127 @@ export class Sorter<T extends Item<T>>
 
 
     /**
-     * Performs the new and previously sorted fields behavior.
+     * Removes the meta-data from the given options.
      */
-    protected performNewAndPrevSortedFieldsBehavior<K extends keyof T>(options: ImmutableProcessedSortingOption<T, K>): void
+    protected removeMeta<K extends keyof T>(options: ProcessedSortingOptionsWithMeta<T, K>): ProcessedSortingOptions<T, K>
     {
-        if (options.insertBehavior.action === 'Mutate')
-        {
-            if (options.insertBehavior.scope === 'Single' && options.insertBehavior.target === 'OptionWithSameField')
-            {
-                const prevIndex = this.getOptions().findIndex(
-                    option => option.field === options.field,
-                )
-
-                if (prevIndex !== -1)
-                    this._options.splice(prevIndex, 1, options as any)
-                else
-                    this._options.push(options as any)
-            }
-        }
-        else if (options.insertBehavior.action === 'Clear')
-        {
-            if (options.insertBehavior.scope === 'All')
-                this._options.splice(0, this._options.length, options as any)
-
-            else if (options.insertBehavior.scope === 'Single' && options.insertBehavior.target === 'OptionWithSameField')
-            {
-                this._options.splice(
-                    this._options.findIndex(
-                        option => option.field === options.field,
-                    ),
-                    1,
-                )
-                this._options.push(options as any)
-            }
+        return {
+            field: options.field,
+            order: options.order,
+            stringOptions: options.stringOptions,
+            numberOptions: options.numberOptions,
+            customCompareFn: options.customCompareFn,
+            customCompareFnForNestedMatch: options.customCompareFnForNestedMatch,
+            prioritizeNulls: options.prioritizeNulls,
+            prioritizeUndefineds: options.prioritizeUndefineds,
         }
     }
+
+
+    /**
+     * Performs the behavior for handling new and previously sorted fields.
+     */
+    protected addNewOptions<K extends keyof T>(options: ProcessedSortingOptionsWithMeta<T, K>): number
+    {
+        const getInsertIndex = (insertBehavior: InsertBehavior<T, K>, prevIndex: number): [number, number] =>
+        {
+            if (insertBehavior.strategy === 'PresetPosition')
+            {
+                if (insertBehavior.action === 'Replace')
+                {
+                    if (insertBehavior.target === 'SameType')
+                    {
+                        if (prevIndex !== -1)
+                            return [prevIndex, 1]
+
+                        else
+                            return getInsertIndex(insertBehavior.notFoundBehavior, prevIndex)
+                    }
+                }
+                else if (insertBehavior.action === 'Push')
+                {
+                    if (insertBehavior.target === 'Start')
+                        return [0, 0]
+
+                    else if (insertBehavior.target === 'End')
+                        return [this._options.length, 0]
+                }
+            }
+            else if (insertBehavior.strategy === 'SpecifiedField')
+            {
+                const targetIndex = this._options.findIndex(
+                    option => option.field === insertBehavior.target,
+                )
+
+                if (targetIndex === -1)
+                {
+                    if (insertBehavior.notFoundBehavior === undefined)
+                        return [-1, -1]
+
+                    return getInsertIndex(insertBehavior.notFoundBehavior, prevIndex)
+                }
+
+                else if (insertBehavior.action === 'Replace')
+                    return [targetIndex, 1]
+
+                else if (insertBehavior.action === 'NewAsSuper')
+                    return [targetIndex, 0]
+
+                else if (insertBehavior.action === 'NewAsNested')
+                    return [targetIndex + 1, 0]
+
+            }
+            else if (insertBehavior.strategy === 'SpecifiedFieldIndex')
+            {
+                const targetIndex = insertBehavior.target > this._options.length ?
+                                    this._options.length : insertBehavior.target < 0 ?
+                                                           0 : insertBehavior.target
+
+                if (insertBehavior.action === 'Replace')
+                    return [targetIndex, 1]
+
+                else if (insertBehavior.action === 'Push')
+                    return [targetIndex, 0]
+            }
+
+            return [-1, -1]
+        }
+
+        const [index, count] = getInsertIndex(
+            options.insertBehavior,
+            this._options.findIndex(option => option.field === options.field),
+        )
+
+        if (index === -1) return -1
+
+        this._options.splice(index, count, this.removeMeta(options as any))
+
+        return index
+    }
+
+
+    /**
+     * Sorts the items based on the current sorting options.
+     */
+    protected handleSearchedItemsChange(): void
+    {
+        const prevSortedItems = [...this.searchResults]
+
+        for (let optionsIndex = 0; optionsIndex < this._options.length; optionsIndex++)
+        {
+            this.sortItems(optionsIndex)
+        }
+
+        if (
+            prevSortedItems.length !== this.searchResults.length ||
+            prevSortedItems.some((item, index) => item !== this.searchResults[index])
+        )
+        {
+            this.$sortedItemsChanged.next({
+                items: this.searchResults,
+                prevItems: prevSortedItems,
+            })
+        }
+    }
+
 }

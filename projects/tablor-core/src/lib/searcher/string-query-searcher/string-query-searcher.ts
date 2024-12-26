@@ -198,7 +198,10 @@ export class StringQuerySearcher<T extends Item<T>>
     /**
      * Generates field value extractor function.
      */
-    protected genFieldValueExtractorFn(isCaseSensitive: boolean): (item: ImmutableAugmentedItem<T>, field: keyof T) => string
+    protected genFieldValueExtractorFn(isCaseSensitive: boolean): (
+        item: ImmutableAugmentedItem<T>,
+        field: keyof T,
+    ) => string
     {
         if (isCaseSensitive)
             return (item, field) => String(item[field])

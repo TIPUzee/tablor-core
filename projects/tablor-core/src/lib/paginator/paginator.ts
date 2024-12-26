@@ -1,19 +1,18 @@
 import
-    {
-        ImmutableAugmentedItem,
-        ItemsAddedPayload,
-        ItemsRemovedPayload,
-        Item,
-    } from '../stores/items-store/interfaces'
+{
+    ImmutableAugmentedItem,
+    ItemsAddedPayload,
+    ItemsRemovedPayload,
+    Item,
+} from '../stores/items-store/interfaces'
 import { Subject } from 'rxjs'
 import
-    {
-        NbOfItemsPerPageChangedPayload,
-        NbOfTotalPagesChangedPayload,
-        PageNbChangedPayload,
-        PaginatedItemsChangedPayload,
-    } from './interfaces'
-import { Searcher } from '../searcher/searcher/searcher'
+{
+    NbOfItemsPerPageChangedPayload,
+    NbOfTotalPagesChangedPayload,
+    PageNbChangedPayload,
+    PaginatedItemsChangedPayload,
+} from './interfaces'
 import { SearchedItemsChangedPayload } from '../searcher/searcher/interfaces'
 import { SortingOptionsChangedPayload } from '../sorter/interfaces'
 
@@ -32,18 +31,12 @@ export class Paginator<T extends Item<T>>
 
 
     constructor(
-        protected readonly searchedItemsStore: Searcher<T>,
+        protected readonly searchResults: ImmutableAugmentedItem<T>[],
         protected readonly $itemsRemoved: Subject<ItemsRemovedPayload<T>>,
         protected readonly $itemsAdded: Subject<ItemsAddedPayload<T>>,
         protected readonly $searchedItemsChanged: Subject<SearchedItemsChangedPayload<T>>,
         protected readonly $sortingOptionsChanged: Subject<SortingOptionsChangedPayload<T>>,
     )
-    {
-        this.initializeEventListeners()
-    }
-
-
-    protected initializeEventListeners(): void
     {
         this.$itemsRemoved.subscribe(() => this.handleItemsRemoved())
         this.$itemsAdded.subscribe(() => this.handleItemsAdded())
@@ -107,13 +100,13 @@ export class Paginator<T extends Item<T>>
         const startIdx = this.getPageIndex() * this._nbOfItemsPerPage
         const endIdx =
             this._nbOfItemsPerPage === -1
-                ? this.searchedItemsStore.getItems().length
-                : startIdx + this._nbOfItemsPerPage
+            ? this.searchResults.length
+            : startIdx + this._nbOfItemsPerPage
 
         if (this._nbOfItemsPerPage === -1)
-            this._paginatedItems = this.searchedItemsStore.getItems()
+            this._paginatedItems = this.searchResults
         else
-            this._paginatedItems = this.searchedItemsStore.getItems().slice(startIdx, endIdx)
+            this._paginatedItems = this.searchResults.slice(startIdx, endIdx)
 
         if (
             prevPaginatedItems.length !== this._paginatedItems.length ||
@@ -125,7 +118,7 @@ export class Paginator<T extends Item<T>>
     }
 
 
-    private updateItemsPerPage(nb: number): void
+    protected updateItemsPerPage(nb: number): void
     {
         if (nb < 0) nb = -1
 
@@ -145,8 +138,7 @@ export class Paginator<T extends Item<T>>
     }
 
 
-
-    private updatePageNb(nb: number): void
+    protected updatePageNb(nb: number): void
     {
         const prevPageNb = this._pageNb
         this._pageNb = Math.max(1, Math.min(nb, this.getNbOfPages()))
@@ -159,10 +151,10 @@ export class Paginator<T extends Item<T>>
     }
 
 
-    private updateNbOfTotalPages(): void
+    protected updateNbOfTotalPages(): void
     {
         const prevNbOfTotalPages = this._nbOfTotalPages
-        const totalItems = this.searchedItemsStore.getItems().length
+        const totalItems = this.searchResults.length
 
         this._nbOfTotalPages = this._nbOfItemsPerPage === -1 ? 1 : Math.ceil(totalItems / this._nbOfItemsPerPage)
 
@@ -173,7 +165,7 @@ export class Paginator<T extends Item<T>>
     }
 
 
-    private handleItemsRemoved(): void
+    protected handleItemsRemoved(): void
     {
         this.updateNbOfTotalPages()
         this.updatePageNb(this._pageNb)
@@ -181,7 +173,7 @@ export class Paginator<T extends Item<T>>
     }
 
 
-    private handleItemsAdded(): void
+    protected handleItemsAdded(): void
     {
         this.updateNbOfTotalPages()
         this.updatePageNb(this._pageNb)
@@ -189,7 +181,7 @@ export class Paginator<T extends Item<T>>
     }
 
 
-    private handleItemsSearched(): void
+    protected handleItemsSearched(): void
     {
         this.updateNbOfTotalPages()
         this.updatePageNb(this._pageNb)
@@ -197,13 +189,13 @@ export class Paginator<T extends Item<T>>
     }
 
 
-    private handleItemsSorted(): void
+    protected handleItemsSorted(): void
     {
         this.updatePageItemsInternal()
     }
 
 
-    private raiseNbOfItemsPerPageChanged(prevNbOfItemsPerPage: number): void
+    protected raiseNbOfItemsPerPageChanged(prevNbOfItemsPerPage: number): void
     {
         this.$nbOfItemsPerPageChanged.next({
             nbOfItemsPerPage: this._nbOfItemsPerPage,
@@ -212,7 +204,7 @@ export class Paginator<T extends Item<T>>
     }
 
 
-    private raiseNbOfTotalPagesChanged(prevNbOfTotalPages: number): void
+    protected raiseNbOfTotalPagesChanged(prevNbOfTotalPages: number): void
     {
         this.$nbOfTotalPagesChanged.next({
             nbOfTotalPages: this._nbOfTotalPages,
@@ -221,13 +213,13 @@ export class Paginator<T extends Item<T>>
     }
 
 
-    private raisePageNbChanged(prevPageNb: number): void
+    protected raisePageNbChanged(prevPageNb: number): void
     {
         this.$pageNbChanged.next({ prevPageNb, pageNb: this._pageNb })
     }
 
 
-    private raisePaginatedItemsChanged(prevPaginatedItems: Readonly<ImmutableAugmentedItem<T>[]>): void
+    protected raisePaginatedItemsChanged(prevPaginatedItems: Readonly<ImmutableAugmentedItem<T>[]>): void
     {
         this.$paginatedItemsChanged.next({
             paginatedItems: this._paginatedItems,

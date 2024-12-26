@@ -4,13 +4,14 @@ import { SampleItemFields, SampleItemType, SampleItems } from '../test-data/test
 import { FieldsStore } from '../stores/fields-store/fields-store'
 import { AugmentedItem } from '../stores/items-store/interfaces'
 import { Searcher } from '../searcher/searcher/searcher'
-import { Sorter } from './sorter2'
+import { Sorter } from './sorter'
 
 
-describe('DataSorter', () =>
+describe('Sorter', () =>
 {
     let allItems: AugmentedItem<SampleItemType>[]
     let allSearchedItems: AugmentedItem<SampleItemType>[][]
+    let searchResults: AugmentedItem<SampleItemType>[]
     let itemsStore: ItemsStore<SampleItemType>
     let fieldsStore: FieldsStore<SampleItemType>
     let searcher: Searcher<SampleItemType>
@@ -20,9 +21,9 @@ describe('DataSorter', () =>
     {
         const f = []
 
-        for (let i = 0; i < allItems.length; i++)
+        for (let i = 0; i < searchResults.length; i++)
         {
-            f.push(`${ allItems[i].UserName } ${ allItems[i].Amount } ${ allItems[i].tablorMeta.uuid }`)
+            f.push(`${ searchResults[i].UserName } ${ searchResults[i].Amount } ${ searchResults[i].tablorMeta.uuid }`)
         }
 
         console.log(f)
@@ -31,6 +32,7 @@ describe('DataSorter', () =>
     beforeEach(() =>
     {
         allItems = []
+        searchResults = []
         allSearchedItems = []
         fieldsStore = new FieldsStore<SampleItemType>()
 
@@ -39,6 +41,7 @@ describe('DataSorter', () =>
         searcher = new Searcher<SampleItemType>(
             allItems,
             allSearchedItems,
+            searchResults,
             fieldsStore,
             itemsStore.$itemsAdded,
             itemsStore.$itemsRemoved,
@@ -47,12 +50,11 @@ describe('DataSorter', () =>
 
         sorter = new Sorter<SampleItemType>(
             fieldsStore,
-            allItems,
-            allSearchedItems,
+            searchResults,
+            searcher.$searchedItemsChanged,
             itemsStore.$itemsAdded,
             itemsStore.$itemsRemoved,
             itemsStore.$itemsUpdated,
-            searcher.$searchedItemsChanged,
         )
 
         fieldsStore.initialize(SampleItemFields)
@@ -66,8 +68,8 @@ describe('DataSorter', () =>
             order: 'ASC',
         })
 
-        expect(allItems[0].UserName).toBe('Ahmed')
-        expect(allItems[allItems.length - 1].UserName).toBe('Zeeshan')
+        expect(searchResults[0].UserName).toBe('Ahmed')
+        expect(searchResults[searchResults.length - 1].UserName).toBe('Zeeshan')
     })
 
     test('should sort data up to the first level in desc', () =>
@@ -77,8 +79,8 @@ describe('DataSorter', () =>
             order: 'DESC',
         })
 
-        expect(allItems[0].UserName).toBe('Zeeshan')
-        expect(allItems[allItems.length - 1].UserName).toBe('Ahmed')
+        expect(searchResults[0].UserName).toBe('Zeeshan')
+        expect(searchResults[searchResults.length - 1].UserName).toBe('Ahmed')
     })
 
     test('should sort data upto 1st level via toggle', () =>
@@ -88,33 +90,33 @@ describe('DataSorter', () =>
             order: 'Toggle',
         })
 
-        expect(allItems[0].UserName).toBe('Ahmed')
-        expect(allItems[allItems.length - 1].UserName).toBe('Zeeshan')
+        expect(searchResults[0].UserName).toBe('Ahmed')
+        expect(searchResults[searchResults.length - 1].UserName).toBe('Zeeshan')
 
         sorter.sort({
             field: 'UserName',
             order: 'Toggle',
         })
 
-        expect(allItems[0].UserName).toBe('Zeeshan')
-        expect(allItems[allItems.length - 1].UserName).toBe('Ahmed')
+        expect(searchResults[0].UserName).toBe('Zeeshan')
+        expect(searchResults[searchResults.length - 1].UserName).toBe('Ahmed')
 
         sorter.sort({
             field: 'UserName',
             order: 'Toggle',
         })
 
-        expect(allItems[0].UserName).toBe('Zeeshan')
-        expect(allItems[allItems.length - 2].UserName).toBe('Zeeshan')
-        expect(allItems[allItems.length - 1].UserName).toBe('Ahmed')
+        expect(searchResults[0].UserName).toBe('Zeeshan')
+        expect(searchResults[searchResults.length - 2].UserName).toBe('Zeeshan')
+        expect(searchResults[searchResults.length - 1].UserName).toBe('Ahmed')
 
         sorter.sort({
             field: 'UserName',
             order: 'Toggle',
         })
 
-        expect(allItems[0].UserName).toBe('Ahmed')
-        expect(allItems[allItems.length - 1].UserName).toBe('Zeeshan')
+        expect(searchResults[0].UserName).toBe('Ahmed')
+        expect(searchResults[searchResults.length - 1].UserName).toBe('Zeeshan')
     })
 
     test('should sort data up to the second level in asc', () =>
@@ -129,17 +131,17 @@ describe('DataSorter', () =>
             order: 'ASC',
         })
 
-        expect(allItems[0].UserName).toBe('Ahmed')
-        expect(allItems[0].Amount).toBe(1000)
+        expect(searchResults[0].UserName).toBe('Ahmed')
+        expect(searchResults[0].Amount).toBe(1000)
 
-        expect(allItems[1].UserName).toBe('Ahmed')
-        expect(allItems[1].Amount).toBe(1500)
+        expect(searchResults[1].UserName).toBe('Ahmed')
+        expect(searchResults[1].Amount).toBe(1500)
 
-        expect(allItems[11].UserName).toBe('Ali')
-        expect(allItems[11].Amount).toBe(1000)
+        expect(searchResults[11].UserName).toBe('Ali')
+        expect(searchResults[11].Amount).toBe(1000)
 
-        expect(allItems[allItems.length - 1].UserName).toBe('Zeeshan')
-        expect(allItems[allItems.length - 1].Amount).toBe(5000)
+        expect(searchResults[searchResults.length - 1].UserName).toBe('Zeeshan')
+        expect(searchResults[searchResults.length - 1].Amount).toBe(5000)
     })
 
     test('should sort data up to the second level by toggle nested option', () =>
@@ -154,37 +156,37 @@ describe('DataSorter', () =>
             order: 'Toggle',
         })
 
-        expect(allItems[0].UserName).toBe('Ahmed')
-        expect(allItems[0].Amount).toBe(1000)
+        expect(searchResults[0].UserName).toBe('Ahmed')
+        expect(searchResults[0].Amount).toBe(1000)
 
-        expect(allItems[1].UserName).toBe('Ahmed')
-        expect(allItems[1].Amount).toBe(1500)
+        expect(searchResults[1].UserName).toBe('Ahmed')
+        expect(searchResults[1].Amount).toBe(1500)
 
-        expect(allItems[10].UserName).toBe('Ahmed')
-        expect(allItems[10].Amount).toBe(5000)
+        expect(searchResults[10].UserName).toBe('Ahmed')
+        expect(searchResults[10].Amount).toBe(5000)
 
-        expect(allItems[11].UserName).toBe('Ali')
-        expect(allItems[11].Amount).toBe(1000)
+        expect(searchResults[11].UserName).toBe('Ali')
+        expect(searchResults[11].Amount).toBe(1000)
 
-        expect(allItems[allItems.length - 1].UserName).toBe('Zeeshan')
-        expect(allItems[allItems.length - 1].Amount).toBe(5000)
+        expect(searchResults[searchResults.length - 1].UserName).toBe('Zeeshan')
+        expect(searchResults[searchResults.length - 1].Amount).toBe(5000)
 
         sorter.sort({
             field: 'Amount',
             order: 'Toggle',
         })
 
-        expect(allItems[0].UserName).toBe('Ahmed')
-        expect(allItems[0].Amount).toBe(5000)
+        expect(searchResults[0].UserName).toBe('Ahmed')
+        expect(searchResults[0].Amount).toBe(5000)
 
-        expect(allItems[10].UserName).toBe('Ahmed')
-        expect(allItems[10].Amount).toBe(1000)
+        expect(searchResults[10].UserName).toBe('Ahmed')
+        expect(searchResults[10].Amount).toBe(1000)
 
-        expect(allItems[11].UserName).toBe('Ali')
-        expect(allItems[11].Amount).toBe(5000)
+        expect(searchResults[11].UserName).toBe('Ali')
+        expect(searchResults[11].Amount).toBe(5000)
 
-        expect(allItems[allItems.length - 1].UserName).toBe('Zeeshan')
-        expect(allItems[allItems.length - 1].Amount).toBe(1200)
+        expect(searchResults[searchResults.length - 1].UserName).toBe('Zeeshan')
+        expect(searchResults[searchResults.length - 1].Amount).toBe(1200)
     })
 
     test(
@@ -200,40 +202,40 @@ describe('DataSorter', () =>
                 order: 'Toggle',
             })
 
-            expect(allItems[0].UserName).toBe('Ahmed')
-            expect(allItems[0].Amount).toBe(1000)
+            expect(searchResults[0].UserName).toBe('Ahmed')
+            expect(searchResults[0].Amount).toBe(1000)
 
-            expect(allItems[1].UserName).toBe('Ahmed')
-            expect(allItems[1].Amount).toBe(1500)
+            expect(searchResults[1].UserName).toBe('Ahmed')
+            expect(searchResults[1].Amount).toBe(1500)
 
-            expect(allItems[10].UserName).toBe('Ahmed')
-            expect(allItems[10].Amount).toBe(5000)
+            expect(searchResults[10].UserName).toBe('Ahmed')
+            expect(searchResults[10].Amount).toBe(5000)
 
-            expect(allItems[11].UserName).toBe('Ali')
-            expect(allItems[11].Amount).toBe(1000)
+            expect(searchResults[11].UserName).toBe('Ali')
+            expect(searchResults[11].Amount).toBe(1000)
 
-            expect(allItems[allItems.length - 1].UserName).toBe('Zeeshan')
-            expect(allItems[allItems.length - 1].Amount).toBe(5000)
+            expect(searchResults[searchResults.length - 1].UserName).toBe('Zeeshan')
+            expect(searchResults[searchResults.length - 1].Amount).toBe(5000)
 
             sorter.sort({
                 field: 'UserName',
                 order: 'Toggle',
             })
 
-            expect(allItems[0].UserName).toBe('Zeeshan')
-            expect(allItems[0].Amount).toBe(1200)
+            expect(searchResults[0].UserName).toBe('Zeeshan')
+            expect(searchResults[0].Amount).toBe(1200)
 
-            expect(allItems[17].UserName).toBe('Zeeshan')
-            expect(allItems[17].Amount).toBe(5000)
+            expect(searchResults[17].UserName).toBe('Zeeshan')
+            expect(searchResults[17].Amount).toBe(5000)
 
-            expect(allItems[18].UserName).toBe('Ali')
-            expect(allItems[18].Amount).toBe(1000)
+            expect(searchResults[18].UserName).toBe('Ali')
+            expect(searchResults[18].Amount).toBe(1000)
 
-            expect(allItems[19].UserName).toBe('Ali')
-            expect(allItems[19].Amount).toBe(1500)
+            expect(searchResults[19].UserName).toBe('Ali')
+            expect(searchResults[19].Amount).toBe(1500)
 
-            expect(allItems[39].UserName).toBe('Ahmed')
-            expect(allItems[39].Amount).toBe(5000)
+            expect(searchResults[39].UserName).toBe('Ahmed')
+            expect(searchResults[39].Amount).toBe(5000)
         },
     )
 
@@ -254,7 +256,7 @@ describe('DataSorter', () =>
             order: 'ASC',
         })
 
-        expect(allItems[0].TransactionType).toBe('Purchase')
+        expect(searchResults[0].TransactionType).toBe('Purchase')
     })
 
     test('should sort data up to the second level in desc', () =>
@@ -268,14 +270,14 @@ describe('DataSorter', () =>
             order: 'DESC',
         })
 
-        expect(allItems[0].UserName).toBe('Zeeshan')
-        expect(allItems[0].Amount).toBe(5000)
+        expect(searchResults[0].UserName).toBe('Zeeshan')
+        expect(searchResults[0].Amount).toBe(5000)
 
-        expect(allItems[18].UserName).toBe('Ali')
-        expect(allItems[18].Amount).toBe(5000)
+        expect(searchResults[18].UserName).toBe('Ali')
+        expect(searchResults[18].Amount).toBe(5000)
 
-        expect(allItems[allItems.length - 1].UserName).toBe('Ahmed')
-        expect(allItems[allItems.length - 1].Amount).toBe(1000)
+        expect(searchResults[searchResults.length - 1].UserName).toBe('Ahmed')
+        expect(searchResults[searchResults.length - 1].Amount).toBe(1000)
     })
 
     test('should sort data up to the second level in desc after sorting up to the first level', () =>
@@ -295,16 +297,16 @@ describe('DataSorter', () =>
             order: 'DESC',
         })
 
-        expect(allItems[0].UserName).toBe('Zeeshan')
-        expect(allItems[0].Amount).toBe(5000)
+        expect(searchResults[0].UserName).toBe('Zeeshan')
+        expect(searchResults[0].Amount).toBe(5000)
 
-        itemsStore.remove([allItems[17].tablorMeta.uuid])
+        itemsStore.remove([searchResults[17].tablorMeta.uuid])
 
-        expect(allItems[17].UserName).toBe('Ali')
-        expect(allItems[17].Amount).toBe(5000)
+        expect(searchResults[17].UserName).toBe('Ali')
+        expect(searchResults[17].Amount).toBe(5000)
 
-        expect(allItems[allItems.length - 1].UserName).toBe('Ahmed')
-        expect(allItems[allItems.length - 1].Amount).toBe(1000)
+        expect(searchResults[searchResults.length - 1].UserName).toBe('Ahmed')
+        expect(searchResults[searchResults.length - 1].Amount).toBe(1000)
     })
 
     test('should sort the data after updating an item', () =>
@@ -323,9 +325,9 @@ describe('DataSorter', () =>
             { ...itemsStore.getItems()[0], UserName: 'John' },
         ])
 
-        expect(allItems[0].UserName).toBe('Zeeshan')
-        expect(allItems[17].UserName).toBe('John')
-        expect(allItems[18].UserName).toBe('Ali')
+        expect(searchResults[0].UserName).toBe('Zeeshan')
+        expect(searchResults[17].UserName).toBe('John')
+        expect(searchResults[18].UserName).toBe('Ali')
     })
 
     test('should sort the data after updating an item - 2', () =>
@@ -341,12 +343,12 @@ describe('DataSorter', () =>
         })
 
         itemsStore.updateByInItemUuid([
-            { ...itemsStore.getItems()[22], Amount: 6000 },
+            { ...searchResults[22], Amount: 6000 },
         ])
 
-        expect(allItems[0].UserName).toBe('Zeeshan')
-        expect(allItems[18].UserName).toBe('Ali')
-        expect(allItems[18].Amount).toBe(6000)
+        expect(searchResults[0].UserName).toBe('Zeeshan')
+        expect(searchResults[18].UserName).toBe('Ali')
+        expect(searchResults[18].Amount).toBe(6000)
     })
 
     test('should sort the data after adding an item', () =>
@@ -372,9 +374,9 @@ describe('DataSorter', () =>
             },
         ])
 
-        expect(allItems[0].UserName).toBe('Zeeshan')
-        expect(allItems[18].UserName).toBe('John')
-        expect(allItems[19].UserName).toBe('Ali')
+        expect(searchResults[0].UserName).toBe('Zeeshan')
+        expect(searchResults[18].UserName).toBe('John')
+        expect(searchResults[19].UserName).toBe('Ali')
     })
 
     test('should trigger sort event after sorting', () =>
@@ -415,13 +417,13 @@ describe('DataSorter', () =>
 
         sorter.clearSort()
 
-        expect(allItems[0].UserName).toBe('Zeeshan')
-        expect(allItems[4].UserName).toBe('Zeeshan')
-        expect(allItems[5].UserName).toBe('Ali')
-        expect(allItems[7].UserName).toBe('Ahmed')
-        expect(allItems[23].UserName).toBe('Ali')
-        expect(allItems[38].UserName).toBe('Zeeshan')
-        expect(allItems[39].UserName).toBe('Ahmed')
+        expect(searchResults[0].UserName).toBe('Zeeshan')
+        expect(searchResults[4].UserName).toBe('Zeeshan')
+        expect(searchResults[5].UserName).toBe('Ali')
+        expect(searchResults[7].UserName).toBe('Ahmed')
+        expect(searchResults[23].UserName).toBe('Ali')
+        expect(searchResults[38].UserName).toBe('Zeeshan')
+        expect(searchResults[39].UserName).toBe('Ahmed')
     })
 
     test('should "not" trigger if items are added or updated', () =>

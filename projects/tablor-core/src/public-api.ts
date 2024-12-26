@@ -1,2 +1,2 @@
 export { TablorCore } from './lib/tablor-core/tablor-core'
-export * from './types';
+export { TablorCoreTypes } from './lib/tablor-core/interfaces'

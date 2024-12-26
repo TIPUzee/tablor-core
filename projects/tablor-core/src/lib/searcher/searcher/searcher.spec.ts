@@ -11,6 +11,7 @@ describe('Searcher Class Tests', () =>
 {
     let allItems: AugmentedItem<SampleItemType>[]
     let allSearchedItems: AugmentedItem<SampleItemType>[][]
+    let searchResults: ImmutableAugmentedItem<SampleItemType>[]
     let fieldsStore: FieldsStore<SampleItemType>
     let itemsStore: ItemsStore<SampleItemType>
     let searcher: Searcher<SampleItemType>
@@ -39,8 +40,17 @@ describe('Searcher Class Tests', () =>
         items: AugmentedItem<SampleItemType>[], field: K,
         val: (val: SampleItemType[K]) => boolean = () => true,
         condition: (item: AugmentedItem<SampleItemType>) => boolean = () => true,
+        merge: boolean = false,
     ) =>
     {
+        if (merge)
+        {
+            const results1 = items.filter((item) => condition(item))
+            const results2 = items.filter((item) => val(item[field]))
+
+            return Array.from(new Set(results1.concat(results2)))
+        }
+
         return items
             .filter((item) => condition(item))
             .filter((item) => val(item[field]))
@@ -50,11 +60,13 @@ describe('Searcher Class Tests', () =>
     {
         allItems = []
         allSearchedItems = []
+        searchResults = []
         fieldsStore = new FieldsStore<SampleItemType>()
         itemsStore = new ItemsStore<SampleItemType>(allItems, fieldsStore)
         searcher = new Searcher<SampleItemType>(
             allItems,
             allSearchedItems,
+            searchResults,
             fieldsStore,
             itemsStore.$itemsAdded,
             itemsStore.$itemsRemoved,
@@ -90,7 +102,7 @@ describe('Searcher Class Tests', () =>
         ])
     })
 
-    test('Search by query in specified single field', () =>
+    test('Search by query in a specified single field', () =>
     {
         searcher.searchByStringQuery({
             query: 'John',
@@ -115,7 +127,7 @@ describe('Searcher Class Tests', () =>
         ])
     })
 
-    test('Search by query first by non-empty query, then empty query', () =>
+    test('Search by query, first by non-empty query, then empty query', () =>
     {
         searcher.searchByStringQuery({
             query: 'jan',
@@ -138,7 +150,7 @@ describe('Searcher Class Tests', () =>
         expect(searcher.getItems()).toEqual(SampleItems.map(item => expect.objectContaining(item)))
     })
 
-    test('Search by query excluding specified single field', () =>
+    test('Search by query excluding a specified single field', () =>
     {
         searcher.searchByStringQuery({
             query: 'John',
@@ -206,7 +218,7 @@ describe('Searcher Class Tests', () =>
         ])
     })
 
-    test('Search by numbers ranges, searching by only min range, in single field', () =>
+    test('Search by numbers ranges, searching by only min range, in a single field', () =>
     {
         searcher.searchByNumbersRanges(
             {
@@ -227,7 +239,7 @@ describe('Searcher Class Tests', () =>
         )
     })
 
-    test('Search by numbers ranges, searching by only max range, in single field', () =>
+    test('Search by numbers ranges, searching by only max range, in a single field', () =>
     {
         searcher.searchByNumbersRanges(
             {
@@ -248,7 +260,7 @@ describe('Searcher Class Tests', () =>
         )
     })
 
-    test('Search by numbers ranges, searching by min and max range, in single field', () =>
+    test('Search by numbers ranges, searching by min and max range, in a single field', () =>
     {
         searcher.searchByNumbersRanges(
             {
@@ -270,7 +282,7 @@ describe('Searcher Class Tests', () =>
         )
     })
 
-    test('Search by numbers ranges, searching by multiple min and max range, in single field', () =>
+    test('Search by numbers ranges, searching by multiple min and max ranges, in a single field', () =>
     {
         searcher.searchByNumbersRanges(
             {
@@ -296,7 +308,7 @@ describe('Searcher Class Tests', () =>
         )
     })
 
-    test('Search by numbers ranges, searching by min range including min, in single field', () =>
+    test('Search by numbers ranges, searching by min range including min, in a single field', () =>
     {
         searcher.searchByNumbersRanges(
             {
@@ -318,7 +330,7 @@ describe('Searcher Class Tests', () =>
         )
     })
 
-    test('Search by numbers ranges, searching by max range including max, in single field', () =>
+    test('Search by numbers ranges, searching by max range including max, in a single field', () =>
     {
         searcher.searchByNumbersRanges(
             {
@@ -340,7 +352,7 @@ describe('Searcher Class Tests', () =>
         )
     })
 
-    test('Search by numbers ranges, searching by min and max range including min and max, in single field', () =>
+    test('Search by numbers ranges, searching by min and max range including min and max, in a single field', () =>
     {
         searcher.searchByNumbersRanges(
             {
@@ -365,7 +377,7 @@ describe('Searcher Class Tests', () =>
     })
 
     test(
-        'Search by numbers ranges, searching by multiple min and max range including min and max, in single field',
+        'Search by numbers ranges, searching by multiple min and max ranges including min and max, in a single field',
         () =>
         {
             searcher.searchByNumbersRanges(
@@ -398,7 +410,7 @@ describe('Searcher Class Tests', () =>
         },
     )
 
-    test('Search by date ranges, searching by only start date, in single field', () =>
+    test('Search by date ranges, searching by only start date, in a single field', () =>
     {
         const start = new Date('2020-01-01')
 
@@ -419,7 +431,7 @@ describe('Searcher Class Tests', () =>
         )
     })
 
-    test('Search by date ranges, searching by start date including start, in single field', () =>
+    test('Search by date ranges, searching by start date including start, in a single field', () =>
     {
         const start = new Date('2020-01-01')
 
@@ -441,7 +453,7 @@ describe('Searcher Class Tests', () =>
         )
     })
 
-    test('Search by date ranges, searching by end date including end, in single field', () =>
+    test('Search by date ranges, searching by end date including the end, in a single field', () =>
     {
         const end = new Date('2020-01-01')
 
@@ -463,7 +475,7 @@ describe('Searcher Class Tests', () =>
         )
     })
 
-    test('Search by date ranges, searching by start date as now, in single field', () =>
+    test('Search by date ranges, searching by start date as now, in a single field', () =>
     {
         const start = new Date()
 
@@ -484,7 +496,7 @@ describe('Searcher Class Tests', () =>
         )
     })
 
-    test('Search by date ranges, searching by end date as now, in single field', () =>
+    test('Search by date ranges, searching by end date as now, in a single field', () =>
     {
         const end = new Date()
 
@@ -505,7 +517,7 @@ describe('Searcher Class Tests', () =>
         )
     })
 
-    test('Search by date ranges, searching by start date using adjustment `Now + 2 years`, in single field', () =>
+    test('Search by date ranges, searching by start date using adjustment `Now + 2 years`, in a single field', () =>
     {
         const start = new Date()
         start.setFullYear(start.getFullYear() + 2)
@@ -528,7 +540,7 @@ describe('Searcher Class Tests', () =>
         )
     })
 
-    test('Search by date ranges, searching by start date using adjustment `Now - 7 years`, in single field', () =>
+    test('Search by date ranges, searching by start date using adjustment `Now - 7 years`, in a single field', () =>
     {
         const start = new Date()
         start.setFullYear(start.getFullYear() - 7)
@@ -551,7 +563,7 @@ describe('Searcher Class Tests', () =>
         )
     })
 
-    test('Search by exact values, searching undefined and null values in single field', () =>
+    test('Search by exact values, searching undefined and null values in a single field', () =>
     {
         searcher.searchByExactValues({
             values: {
@@ -583,7 +595,7 @@ describe('Searcher Class Tests', () =>
         )
     })
 
-    test('Search by exact values, searching undefined and null values in multiple fields, at least one is null', () =>
+    test('Search by exact values, searching undefined and null values in multiple fields; at least one is null', () =>
     {
         searcher.searchByExactValues({
             values: {
@@ -600,7 +612,7 @@ describe('Searcher Class Tests', () =>
         )
     })
 
-    test('Search by exact values, searching number values in single field', () =>
+    test('Search by exact values, searching number values in a single field', () =>
     {
         const salary = 66000
 
@@ -617,7 +629,7 @@ describe('Searcher Class Tests', () =>
         )
     })
 
-    test('Search by exact values, searching date values in single field', () =>
+    test('Search by exact values, searching date values in a single field', () =>
     {
         const hireDate = new Date('2022-09-13')
 
@@ -644,7 +656,7 @@ describe('Searcher Class Tests', () =>
         expect(searcher.getItems().length).toBe(1)
     })
 
-    test('Search by custom function, searching undefined and null values in single field', () =>
+    test('Search by custom function, searching for undefined and null values in a single field', () =>
     {
         const evenFn = (val: any) => val % 2 === 0
 
@@ -686,7 +698,7 @@ describe('Searcher Class Tests', () =>
         )
     })
 
-    test('Search by numbers ranges, searching min and max ranges, and check if event is emitted', () =>
+    test('Search by numbers ranges, searching min and max ranges, and check if an event is emitted', () =>
     {
         const prevItems = searcher.getItems()
         const prevOptions = structuredClone(searcher.getOptions())
@@ -728,7 +740,7 @@ describe('Searcher Class Tests', () =>
         expect(searcher.getNbOfSearchedItems()).toEqual(SampleItems.length)
     })
 
-    test('Search by string query, searching in single field, check nb of results', () =>
+    test('Search by string query, searching in a single field, check nb of results', () =>
     {
         const query = 'a'
 
@@ -744,7 +756,8 @@ describe('Searcher Class Tests', () =>
     })
 
     test(
-        'Search items by date, multiple searches, update searched items so that they will be removed from searched',
+        'Search items by date, multiple searches, update searched items so that they will be removed from searched -' +
+        ' search in prev',
         () =>
         {
             const date = new Date('2019-01-01')
@@ -807,6 +820,89 @@ describe('Searcher Class Tests', () =>
                         v => v.toLowerCase().includes('john'),
                         i => i.hire_date !== null
                             && i.hire_date.getTime() > date.getTime(),
+                    ),
+                ),
+            )
+        },
+    )
+
+    test(
+        'Search items by date, multiple searches, update searched items so that they will be removed from searched -' +
+        ' search in all',
+        () =>
+        {
+            const date = new Date('2019-01-01')
+
+            searcher.searchByDateRanges({
+                ranges: {
+                    hire_date: [
+                        {
+                            start: date,
+                        },
+                    ],
+                },
+            })
+
+            searcher.searchByStringQuery({
+                query: 'John',
+                includeFields: ['name'],
+                searchTarget: { scope: 'All' },
+            })
+
+            const expected = findItems(
+                itemsStore.getItems(),
+                'name',
+                v => v.toLowerCase().includes('john'),
+                i => i.hire_date !== null
+                    && i.hire_date.getTime() > date.getTime(),
+                true,
+            )
+
+            expect(searcher.getItems()).toEqual(
+                findItems(
+                    itemsStore.getItems(),
+                    'name',
+                    v => v.toLowerCase().includes('john'),
+                    i => i.hire_date !== null
+                        && i.hire_date.getTime() > date.getTime(),
+                    true,
+                ),
+            )
+
+            itemsStore.updateByInItemUuid(updateItems(
+                itemsStore.getItems(),
+                'name',
+                'Zeeshan',
+                item => item.name.toLowerCase().includes('john'),
+            ))
+
+            expect(searcher.getItems()).toEqual(
+                findItems(
+                    itemsStore.getItems(),
+                    'name',
+                    v => v.toLowerCase().includes('john'),
+                    i => i.hire_date !== null
+                        && i.hire_date.getTime() > date.getTime(),
+                    true,
+                ),
+            )
+
+            itemsStore.updateByInItemUuid(updateItems(
+                itemsStore.getItems(),
+                'name',
+                'John',
+                () => true,
+            ))
+
+            expect(searcher.getItems()).toEqual(
+                expect.arrayContaining(
+                    findItems(
+                        itemsStore.getItems(),
+                        'name',
+                        v => v.toLowerCase().includes('john'),
+                        i => i.hire_date !== null
+                            && i.hire_date.getTime() > date.getTime(),
+                        true,
                     ),
                 ),
             )

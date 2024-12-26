@@ -18,7 +18,7 @@ export type Item<T extends Record<string, PrimitiveTypes>> = {
 /**
  * A partially defined regular item.
  */
-export type HalfItem<T extends Item<T>> = Partial<T>;
+export type PartialItem<T extends Item<T>> = Partial<T>;
 
 /**
  * A read-only version of a regular item.
@@ -28,7 +28,7 @@ export type ImmutableRegularItem<T extends Item<T>> = Readonly<Item<T>>;
 /**
  * A read-only version of a partially defined item.
  */
-export type ImmutablePartialRegularItem<T extends Item<T>> = Readonly<HalfItem<T>>;
+export type ImmutablePartialRegularItem<T extends Item<T>> = Readonly<PartialItem<T>>;
 
 /**
  * A partially defined version of an augmented partial item.

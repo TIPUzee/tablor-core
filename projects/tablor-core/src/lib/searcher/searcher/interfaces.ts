@@ -200,7 +200,7 @@ export type DraftStringQuerySearchOptions<T> = SearchBehavior & StringQueryOpts<
  *
  * @template T - The base type for the processed search options.
  */
-export type ProcessedStringSearchOptions<T> = ProcessedSearchBehavior & ProcStringQueryOpts<T> & {
+export type ProcessedStringQuerySearchOptions<T> = ProcessedSearchBehavior & ProcStringQueryOpts<T> & {
     by: 'StringQuery';
 }
 
@@ -312,7 +312,7 @@ export type ProcessedSearchableOptions<T> =
 /**
  * Represents processed search options for string query functionality.
  */
-    ProcessedStringSearchOptions<T>
+    ProcessedStringQuerySearchOptions<T>
 
     /**
      * Represents processed search options for date-time range query functionality.
