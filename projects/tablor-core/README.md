@@ -1,5 +1,6 @@
-# TablorCoreBeta
+# TablorCoreBetaOptimized
 
-## Do NOT use this library yet!
+## Do NOT use this library.
 
-This library is a work in progress. It will be ready in 2 to 3 days.
+This library is for development and testing only.
+Please use `tablor-core` instead.
