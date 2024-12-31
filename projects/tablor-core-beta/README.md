@@ -7,11 +7,11 @@ Please use `tablor-core` instead.
 
 ## Demo
 
-Please see [Tablor Core on CodeSandbox](https://codesandbox.io/p/github/TIPUzee/tablor-core-demo/beta/simple).
-Note that demo is not ready yet.
+Please see [Tablor Core on Stackblitz](https://stackblitz.com/github/TIPUzee/tablor-core-demo/tree/beta/simple?file=src%2Fapp%2Fapp.component.ts).
+Note that demo is not completed yet.
 
 ## License
 
 Apache-2.0
 
-Copyright 2023 TIPUzee
+Copyright 2024 TIPUzee

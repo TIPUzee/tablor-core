@@ -100,7 +100,7 @@ export class Searcher<T extends Item<T>>
     public clearSearch(): void
     {
         const prevSearchResults = this.getItems()
-        const prevSearchOptions = this._options
+        const prevSearchOptions = [...this._options]
 
         this._options.length = 0
         this.allSearchedItems.length = 0
