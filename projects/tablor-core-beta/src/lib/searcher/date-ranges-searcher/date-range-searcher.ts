@@ -11,6 +11,12 @@ import { convertToStrictDateRange } from './date-ranges-searcher-utils'
  */
 export class DateRangeSearcher<T extends Item<T>>
 {
+    constructor(
+        protected readonly hasField: (key: keyof T) => boolean,
+    )
+    {}
+
+
     /**
      * Processes string query options.
      */
@@ -33,6 +39,21 @@ export class DateRangeSearcher<T extends Item<T>>
 
 
     /**
+     * Checks if the given options are valid.
+     */
+    checkKeys(options: ProcDateRangesOpts<T>): boolean
+    {
+        for (const field in options.ranges)
+        {
+            if (!this.hasField(field as keyof T))
+                return false
+        }
+
+        return true
+    }
+
+
+    /**
      * Searches items based on date ranges.
      */
     search(
@@ -46,6 +67,9 @@ export class DateRangeSearcher<T extends Item<T>>
     }
 
 
+    /**
+     * Filters items based on date ranges.
+     */
     protected filterMatchingItemsUuids(
         dateRanges: ProcDateRanges<T>,
         mustMatchAllFields: boolean,

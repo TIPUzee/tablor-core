@@ -1,5 +1,5 @@
 import { ImmutableAugmentedItem, Item } from '../../stores/items-store/interfaces'
-import { VoidOpts, ProcessedVoidOptions } from './interfaces'
+import { ProcessedVoidOptions } from './interfaces'
 
 
 /**
@@ -7,13 +7,25 @@ import { VoidOpts, ProcessedVoidOptions } from './interfaces'
  */
 export class VoidSearcher<T extends Item<T>>
 {
+    constructor()
+    {}
+
+
     /**
      * Processes string query options.
      */
-    processOptions(options: VoidOpts<T>): ProcessedVoidOptions<T>
+    processOptions(): ProcessedVoidOptions<T>
     {
-        return {
-        }
+        return {}
+    }
+
+
+    /**
+     * Checks if the given options are valid.
+     */
+    checkKeys(): boolean
+    {
+        return true
     }
 
 
@@ -22,7 +34,6 @@ export class VoidSearcher<T extends Item<T>>
      */
     search(
         items: ImmutableAugmentedItem<T>[],
-        options: ProcessedVoidOptions<T>,
     ): ImmutableAugmentedItem<T>[]
     {
         return items

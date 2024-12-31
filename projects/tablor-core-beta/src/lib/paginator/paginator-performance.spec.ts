@@ -9,7 +9,7 @@ import { Sorter } from '../sorter/sorter'
 
 describe('NvPaginator', () =>
 {
-        let allItems: AugmentedItem<SampleItemType>[]
+    let allItems: AugmentedItem<SampleItemType>[]
     let allSearchedItems: AugmentedItem<SampleItemType>[][]
     let searchResults: AugmentedItem<SampleItemType>[]
     let itemsStore: ItemsStore<SampleItemType>
@@ -29,17 +29,18 @@ describe('NvPaginator', () =>
         itemsStore = new ItemsStore<SampleItemType>(allItems, fieldsStore)
 
         searcher = new Searcher<SampleItemType>(
+            fieldsStore.hasField.bind(fieldsStore),
+            fieldsStore.getFieldsAsArray.bind(fieldsStore),
             allItems,
             allSearchedItems,
             searchResults,
-            fieldsStore,
             itemsStore.$itemsAdded,
             itemsStore.$itemsRemoved,
             itemsStore.$itemsUpdated,
         )
 
         sorter = new Sorter<SampleItemType>(
-            fieldsStore,
+            fieldsStore.hasField.bind(fieldsStore),
             searchResults,
             searcher.$searchedItemsChanged,
             itemsStore.$itemsAdded,

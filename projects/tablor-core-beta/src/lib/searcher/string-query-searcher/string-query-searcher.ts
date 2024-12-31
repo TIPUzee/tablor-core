@@ -1,11 +1,9 @@
 import {
     ImmutableAugmentedItem,
-    PrimitiveTypesAsString,
     Item,
 } from '../../stores/items-store/interfaces'
-import { FieldsStore } from '../../stores/fields-store/fields-store'
-import { StringQueryOpts, ProcStringQueryOpts } from './interfaces'
-import { containsSubstring } from './searcher-utils/utils'
+import { ProcessedField } from '../../stores/fields-store/interfaces'
+import { DraftStringQueryOptions, ProcessedStringQueryOptions } from './interfaces'
 
 
 /**
@@ -15,7 +13,8 @@ export class StringQuerySearcher<T extends Item<T>>
 {
 
     constructor(
-        protected readonly fieldsStore: FieldsStore<T>,
+        protected readonly getFields: () => ProcessedField<T, keyof T>[],
+        protected readonly hasField: (key: keyof T) => boolean,
     )
     { }
 
@@ -23,38 +22,92 @@ export class StringQuerySearcher<T extends Item<T>>
     /**
      * Processes string query options.
      */
-    processOptions(options: StringQueryOpts<T>): ProcStringQueryOpts<T>
+    processOptions(options: DraftStringQueryOptions<T>): ProcessedStringQueryOptions<T>
     {
-        const newOptions: ProcStringQueryOpts<T> = {
-            query: options.query !== undefined ? options.query : '',
+        let includeFields: ProcessedStringQueryOptions<T>['includeFields']
+        let excludeFields = options.excludeFields || []
+
+        if (options.includeFields === undefined)
+            includeFields = this.getFields()
+                .map(field => field.key)
+                .filter(field => !excludeFields.includes(field))
+        else
+            includeFields = options.includeFields
+
+        const newOptions: ProcessedStringQueryOptions<T> = {
+            query: options.query,
             words: [],
 
-            includeFields: options.includeFields || [],
-            excludeFields: options.excludeFields || [],
+            includeFields: includeFields,
+
+            wordsInOrder: false,
+
+            consecutiveWords: false,
 
             singleWordMatchCriteria: options.singleWordMatchCriteria !== undefined ?
                                      options.singleWordMatchCriteria :
                                      'Contains',
-            mustMatchAllWords: options.mustMatchAllWords === undefined ? true : options.mustMatchAllWords,
-            wordsMustBeInOrder: options.wordsMustBeInOrder === undefined ? false : options.wordsMustBeInOrder,
-            convertNonStringTypes: options.convertNonStringTypes === undefined ?
-                                   (['string', 'number', 'boolean', 'date'] as PrimitiveTypesAsString[]) :
-                                   options.convertNonStringTypes,
+
+            requireAllWords: options.requireAllWords === undefined ? true : options.requireAllWords,
+
+            convertToString: {
+                string: s => s,
+                null: undefined,
+                undefined: undefined,
+                boolean: undefined,
+                number: undefined,
+                date: undefined,
+            },
 
             ignoreWhitespace: options.ignoreWhitespace === undefined ? true : options.ignoreWhitespace,
-            wordSeparator: options.wordSeparator === undefined ? ' ' : options.wordSeparator,
+
+            wordSeparators: options.wordSeparators === undefined ? [' '] : options.wordSeparators,
+
             isCaseSensitive: options.isCaseSensitive === undefined ? false : options.isCaseSensitive,
         }
 
-        if (newOptions.includeFields.length === 0)
-            newOptions.includeFields = this.fieldsStore.getFieldsAsArray()
-                .map(field => field.key)
-                .filter(field => !newOptions.excludeFields.includes(field))
+        if (options.wordsInOrder)
+        {
+            if (newOptions.includeFields.length !== 1)
+            {
+                console.warn('Words in order can only be used with a single field', options)
+                throw new Error('Words in order can only be used with a single field')
+            }
+
+            // @ts-ignore
+            newOptions.wordsInOrder = true
+        }
+
+        if (options.consecutiveWords)
+        {
+            if (newOptions.includeFields.length !== 1)
+            {
+                console.warn('Consecutive words can only be used with a single field', options)
+                throw new Error('Consecutive words can only be used with a single field')
+            }
+
+            // @ts-ignore
+            newOptions.consecutiveWords = true
+        }
+
+        if (options.convertToString)
+        {
+            // @ts-ignore
+            newOptions.convertToString = {
+                string: undefined,
+                null: undefined,
+                undefined: undefined,
+                boolean: undefined,
+                number: undefined,
+                date: undefined,
+                ...options.convertToString,
+            }
+        }
 
         if (!options.query) return newOptions
 
         newOptions.words = this.genQuerySplitterIntoWords(
-            newOptions.wordSeparator,
+            newOptions.wordSeparators,
             newOptions.ignoreWhitespace,
             newOptions.isCaseSensitive,
         )(newOptions.query)
@@ -64,11 +117,26 @@ export class StringQuerySearcher<T extends Item<T>>
 
 
     /**
+     * Checks if the given options are valid.
+     */
+    checkKeys(options: ProcessedStringQueryOptions<T>): boolean
+    {
+        for (const field of options.includeFields)
+        {
+            if (!this.hasField(field))
+                return false
+        }
+
+        return true
+    }
+
+
+    /**
      * Search items by string query.
      */
     public search(
         items: ImmutableAugmentedItem<T>[],
-        options: ProcStringQueryOpts<T>,
+        options: ProcessedStringQueryOptions<T>,
     ): ImmutableAugmentedItem<T>[]
     {
         if (options.words.length === 0)
@@ -76,14 +144,72 @@ export class StringQuerySearcher<T extends Item<T>>
 
         if (options.includeFields.length === 0) return []
 
-        const fieldValueExtractorFn
-            = this.genFieldValueExtractorFn(options.isCaseSensitive)
-
         return this._search(
             items,
             options,
-            fieldValueExtractorFn,
         )
+    }
+
+
+    /**
+     * Search items by string query.
+     */
+    protected _search(
+        items: ImmutableAugmentedItem<T>[],
+        options: ProcessedStringQueryOptions<T>,
+    ): ImmutableAugmentedItem<T>[]
+    {
+        const searchedItems: ImmutableAugmentedItem<T>[] = []
+
+        const splitQueryIntoWords = this.genQuerySplitterIntoWords(
+            options.wordSeparators,
+            options.ignoreWhitespace,
+            options.isCaseSensitive,
+        )
+
+        const matchWords = this.genWordsMatcherFn(options)
+
+        const matchPhrases = this.genPhrasesMatcherFn(matchWords, options)
+
+        items.forEach((item) =>
+        {
+            const itemWords: string[] = []
+
+            for (const field of options.includeFields)
+            {
+                if (field === 'tablorMeta')
+                    throw new Error('Cannot search by tablorMeta field')
+
+                const valueType: string = typeof item[field]
+
+                // @ts-ignore
+                if (!options.convertToString[valueType])
+                    continue
+
+                // @ts-ignore
+                let value: string = options.convertToString[valueType](item[field])
+
+                const valueWords: string[] = splitQueryIntoWords(value)
+
+                if (valueWords.length === 0)
+                    continue
+
+                if (itemWords.length > 0)
+                    itemWords.push('')
+
+                itemWords.push(...valueWords)
+            }
+
+            if (itemWords.length === 0)
+                return
+
+            const itemPassed = matchPhrases(options.words, itemWords)
+
+            if (itemPassed)
+                searchedItems.push(item)
+        })
+
+        return searchedItems
     }
 
 
@@ -91,16 +217,30 @@ export class StringQuerySearcher<T extends Item<T>>
      * Generates field value extractor function.
      */
     protected genQuerySplitterIntoWords(
-        wordSeparator: string = ' ',
-        ignoreWhitespace: boolean = true,
-        isCaseSensitive: boolean = false,
-    ): (query: string | string[]) => (string)[]
+        wordSeparators: ProcessedStringQueryOptions<T>['wordSeparators'],
+        ignoreWhitespace: boolean,
+        isCaseSensitive: boolean,
+    ): (query: string) => (string)[]
     {
-        return (query: string | string[]) =>
+        const wordSeparatorsAsFn = wordSeparators.map(separator =>
         {
-            const combinedQuery = Array.isArray(query) ? query.join(wordSeparator) : query
+            if (typeof separator === 'string')
+                return (query: string) => query.split(separator)
+            else if (typeof separator === 'function')
+                return separator
+            else if (separator instanceof RegExp)
+                return (query: string) => query.split(separator)
+            else
+                throw new Error('Invalid word separator')
+        })
 
-            let words = combinedQuery.split(wordSeparator)
+        return (query: string) =>
+        {
+            let words: string[] = [query]
+
+            wordSeparatorsAsFn.forEach(
+                wordSeparatorFn => words.splice(0, words.length, ...wordSeparatorFn(query)),
+            )
 
             if (ignoreWhitespace)
                 words = words.map(word => word.trim())
@@ -115,98 +255,156 @@ export class StringQuerySearcher<T extends Item<T>>
     }
 
 
-    /**
-     * Search items by string query.
-     */
-    protected _search(
-        items: ImmutableAugmentedItem<T>[],
-        options: ProcStringQueryOpts<T>,
-        fieldValueExtractor: (item: ImmutableAugmentedItem<T>, field: keyof T) => string,
-    ): ImmutableAugmentedItem<T>[]
+    protected genWordsMatcherFn(
+        options: ProcessedStringQueryOptions<T>,
+    ): (subWord: string, word: string) => boolean
     {
-        const searchedItems: ImmutableAugmentedItem<T>[] = []
-
-        items.forEach((item) =>
+        switch (options.singleWordMatchCriteria)
         {
-            const matchedSubstrings: [number, number][] = []
-            const wordsMatchStatus: boolean[] = Array(options.words.length).fill(false)
+            case 'ExactMatch':
+                return (subWord, word) => subWord === word
+            case 'Contains':
+                return (subWord, word) => word.includes(subWord)
+            case 'StartsWith':
+                return (subWord, word) => word.startsWith(subWord)
+            case 'EndsWith':
+                return (subWord, word) => word.endsWith(subWord)
+        }
+    }
 
-            for (const field of options.includeFields)
+
+    protected genPhrasesMatcherFn(
+        wordsMatcherFn: (subWord: string, word: string) => boolean,
+        options: ProcessedStringQueryOptions<T>,
+    ): (searchWords: string[], itemWords: string[]) => boolean
+    {
+        if (options.requireAllWords)
+        {
+            if (options.wordsInOrder)
             {
-                if (field === 'tablorMeta') continue
-
-                if (!options.includeFields.includes(field as keyof T))
-                    continue
-
-                if (item[field as keyof T] === null || item[field as keyof T] === undefined)
-                    continue
-
-                const valType = typeof item[field as keyof T] !== 'object' ?
-                                (typeof item[field as keyof T] as PrimitiveTypesAsString) :
-                                (item[field as keyof T] as any) instanceof Date ? 'date' : 'string'
-
-                if (valType === 'date')
-                    continue
-
-                if (!options.convertNonStringTypes.includes(valType))
-                    continue
-
-                let fieldValue = fieldValueExtractor(item, field as keyof T)
-
-                for (let i = 0; i < options.words.length; i++)
+                if (options.consecutiveWords)
                 {
-                    if (options.words[i] === '' || wordsMatchStatus[i])
-                        continue
-
-                    const [wordStart, wordEnd] = containsSubstring(fieldValue, options.words[i])
-
-                    if (wordStart === undefined && wordEnd === undefined)
-                        continue
-
-                    if (
-                        options.wordsMustBeInOrder && matchedSubstrings.length > 0 &&
-                        wordStart < matchedSubstrings[matchedSubstrings.length - 1][1]
-                    )
-                        continue
-
-                    if (
-                        matchedSubstrings.some(substring =>
-                            (wordStart >= substring[0] && wordStart < substring[1]) ||
-                            (wordEnd > substring[0] && wordEnd <= substring[1]),
-                        )
-                    )
-                        continue
-
-                    wordsMatchStatus[i] = true
-                    matchedSubstrings.push([wordStart, wordEnd])
-
-                    fieldValue = fieldValue.replace(fieldValue.substring(wordStart, wordEnd), '')
-
-                    if (matchedSubstrings.length === options.words.length)
+                    return (sw, iw) =>
                     {
-                        searchedItems.push(item)
-                        break
+                        // start with
+                        // iw: Fill Full Screen With Gray Color
+                        // sw: f s wi: true
+                        // sw: f s g: false
+
+                        for (let i = 0; i <= iw.length - sw.length; i++)
+                        {
+                            let match = true
+                            for (let j = 0; j < sw.length; j++)
+                            {
+                                if (!wordsMatcherFn(sw[j], iw[i + j]))
+                                {
+                                    match = false
+                                    break
+                                }
+                            }
+                            if (match) return true
+                        }
+                        return false
+                    }
+                }
+                else
+                {
+                    return (sw, iw) =>
+                    {
+                        // start with
+                        // iw: Fill Full Screen With Gray Color
+                        // sw: f s wi: true
+                        // sw: f s g: true
+
+                        let currentIndex = 0
+                        for (let i = 0; i < sw.length; i++)
+                        {
+                            let found = false
+                            for (let j = currentIndex; j < iw.length; j++)
+                            {
+                                if (wordsMatcherFn(sw[i], iw[j]))
+                                {
+                                    found = true
+                                    currentIndex = j + 1
+                                    break
+                                }
+                            }
+                            if (!found) return false
+                        }
+                        return true
                     }
                 }
             }
-        })
+            else
+            {
+                if (options.consecutiveWords)
+                {
+                    const isPermutationMatch = (sw: string[], slice: string[], wordsMatcherFn: Function): boolean =>
+                    {
+                        const matchedIndices = new Set<number>()
 
-        return searchedItems
+                        for (let i = 0; i < sw.length; i++)
+                        {
+                            let found = false
+
+                            for (let j = 0; j < slice.length; j++)
+                            {
+                                if (!matchedIndices.has(j) && wordsMatcherFn(sw[i], slice[j]))
+                                {
+                                    matchedIndices.add(j)
+                                    found = true
+                                    break
+                                }
+                            }
+                            if (!found) return false
+                        }
+                        return true
+                    }
+
+                    return (sw, iw) =>
+                    {
+                        // start with
+                        // iw: Fill Full Screen With Gray Color
+                        // sw: wi f s: true
+                        // sw: g f s: false
+
+                        for (let i = 0; i <= iw.length - sw.length; i++)
+                        {
+                            const slice = iw.slice(i, i + sw.length)
+
+                            if (isPermutationMatch(sw, slice, wordsMatcherFn))
+                            {
+                                return true
+                            }
+                        }
+                        return false
+                    }
+                }
+                else
+                {
+                    return (sw, iw) =>
+                    {
+                        // start with
+                        // iw: Fill Full Screen With Gray Color
+                        // sw: s c wi: true
+                        // sw: s f g: true
+
+                        return sw.every((word) => iw.some((itemWord) => wordsMatcherFn(word, itemWord)))
+                    }
+                }
+            }
+        }
+        else
+        {
+            return (sw, iw) =>
+            {
+                // start with
+                // iw: Fill Full Screen With Gray Color
+                // sw: s: true
+                // sw: a: false
+
+                return sw.some((word) => iw.some((itemWord) => wordsMatcherFn(word, itemWord)))
+            }
+        }
     }
-
-
-    /**
-     * Generates field value extractor function.
-     */
-    protected genFieldValueExtractorFn(isCaseSensitive: boolean): (
-        item: ImmutableAugmentedItem<T>,
-        field: keyof T,
-    ) => string
-    {
-        if (isCaseSensitive)
-            return (item, field) => String(item[field])
-
-        return (item, field) => String(item[field]).toLowerCase()
-    }
-
 }

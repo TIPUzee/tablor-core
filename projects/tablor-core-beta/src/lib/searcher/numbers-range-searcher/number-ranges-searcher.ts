@@ -9,6 +9,12 @@ import {
  */
 export class NumberRangesSearcher<T extends Item<T>>
 {
+    constructor(
+        protected readonly hasField: (key: keyof T) => boolean,
+    )
+    {}
+
+
     /**
      * Processes string query options.
      */
@@ -35,6 +41,21 @@ export class NumberRangesSearcher<T extends Item<T>>
         }
 
         return newOptions
+    }
+
+
+    /**
+     * Checks if the given options are valid.
+     */
+    checkKeys(options: ProcNumberRangesOpts<T>): boolean
+    {
+        for (const field in options.ranges)
+        {
+            if (!this.hasField(field as keyof T))
+                return false
+        }
+
+        return true
     }
 
 

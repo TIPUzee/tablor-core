@@ -10,12 +10,25 @@ import {
  */
 export class CustomSearcher<T extends Item<T>>
 {
+    constructor()
+    {}
+
+
     /**
      * Processes the options.
      */
     processOptions(options: CustomOpts<T>): ProcCustomOpts<T>
     {
         return options
+    }
+
+
+    /**
+     * Checks if the given options are valid.
+     */
+    checkKeys(): boolean
+    {
+        return true
     }
 
 

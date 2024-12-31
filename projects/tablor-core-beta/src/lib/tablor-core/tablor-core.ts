@@ -86,17 +86,18 @@ export class TablorCore<T extends Item<T>>
     )
 
     protected readonly searcher = new Searcher<T>(
+        this.fieldsStore.hasField.bind(this.fieldsStore),
+        this.fieldsStore.getFieldsAsArray.bind(this.fieldsStore),
         this.allItems,
         this.allSearchedItems,
         this.searchResults,
-        this.fieldsStore,
         this.itemsStore.$itemsAdded,
         this.itemsStore.$itemsRemoved,
         this.itemsStore.$itemsUpdated,
     )
 
     protected readonly sorter = new Sorter<T>(
-        this.fieldsStore,
+        this.fieldsStore.hasField.bind(this.fieldsStore),
         this.searchResults,
         this.searcher.$searchedItemsChanged,
         this.itemsStore.$itemsAdded,
@@ -817,6 +818,56 @@ export class TablorCore<T extends Item<T>>
     getFieldsAsArray
         = this.fieldsStore.getFieldsAsArray.bind(this.fieldsStore)
 
+    /**
+     * Get a field by its key.
+     *
+     * @parameters key - The key of the field to get.
+     *
+     * @returnings The field, or undefined if not found.
+     *
+     * @exampleUsage
+     * ```TypeScript
+     * const field = tablor.getField('id')
+     * // {
+     * //     key: 'id',
+     * //     title: 'ID',
+     * //     isSortedByDefault: true
+     * // }
+     * ```
+     */
+    getField
+        = this.fieldsStore.getField.bind(this.fieldsStore)
+
+    /**
+     * Get the keys of all processed fields.
+     *
+     * @returnings An array of field keys.
+     *
+     * @exampleUsage
+     * ```TypeScript
+     * const fieldKeys = tablor.getFieldsKeys()
+     * // ['id', 'name', 'age']
+     * ```
+     */
+    getFieldsKeys
+        = this.fieldsStore.getFieldsKeys.bind(this.fieldsStore)
+
+    /**
+     * Check if a field exists.
+     *
+     * @parameters key - The key of the field to check.
+     *
+     * @returnings True if the field exists, false otherwise.
+     *
+     * @exampleUsage
+     * ```TypeScript
+     * const hasField = tablor.hasField('id')
+     * // true
+     * ```
+     */
+    hasField
+        = this.fieldsStore.hasField.bind(this.fieldsStore)
+
     /** ------------ ITEMS METHODS  ------------ */
 
     /**
@@ -1215,7 +1266,22 @@ export class TablorCore<T extends Item<T>>
     /**
      * Gets the sorting option objects.
      *
+     * @parameters `includingNoneOrdered` - Whether to include the `'None'` ordered options.
+     * (Default: `true`)
+     *
      * @returnings An array of sorting options.
+     *
+     * @remarks
+     * + `'Toggle'` order iterates through the `supportedToggleOrders`,
+     * and uses the `toggleOrderIndex` to determine the current position.
+     * + `'None'` order sorts the items in the original order, but nested sorting options can resort the items.
+     * `'None'` order acts as no sorting.
+     * + `'ORIGINAL'` order sorts the items in the original order.
+     * Nested sorting options only sort them in nested order.
+     *
+     * @remarks
+     * + To check if a field was sorted by `'Toggle'`,
+     * check the existence of the `supportedToggleOrders` property in the sorting options.
      *
      * @exampleUsage
      * ```TypeScript
@@ -1236,6 +1302,81 @@ export class TablorCore<T extends Item<T>>
      */
     getSortingOptions
         = this.sorter.getOptions.bind(this.sorter)
+
+    /**
+     * Gets the keys of all current sorting options.
+     *
+     * @parameters `includingNoneOrdered` - Whether to include the `'None'` ordered options.
+     * (Default: `true`)
+     *
+     * @returnings An array of keys of sorting options.
+     *
+     * @exampleUsage
+     * ```TypeScript
+     * const keys = tablor.getSortingFieldKeys();
+     * // ['name', 'surname']
+     * ```
+     */
+    getSortingFieldKeys
+        = this.sorter.getSortingFieldKeys.bind(this.sorter)
+
+    /**
+     * Gets the orders of all current sorting options.
+     *
+     * @parameters `includingNoneOrdered` - Whether to include the `'None'` ordered options.
+     * (Default: `true`)
+     *
+     * @returnings An array of orders of sorting options.
+     *
+     * @exampleUsage
+     * ```TypeScript
+     * const orders = tablor.getSortingFieldOrders();
+     * // ['ASC', 'ASC']
+     * ```
+     */
+    getSortingFieldOrders
+        = this.sorter.getSortingFieldOrders.bind(this.sorter)
+
+    /**
+     * Gets the order of a specific sorting option.
+     *
+     * @parameters `indexOrKey` - The index or key of the sorting option.
+     *
+     * @returnings The order of the sorting option, or `undefined` if not found.
+     *
+     * @exampleUsage
+     * ```TypeScript
+     * const order = tablor.getSortingFieldOrder('name');
+     * // 'ASC'
+     * ```
+     *
+     * @exampleUsage
+     * ```TypeScript
+     * const order = tablor.getSortingFieldOrder(-1);
+     * // 'ASC'
+     * ```
+     */
+    getSortingFieldOrder
+        = this.sorter.getSortingFieldOrder.bind(this.sorter)
+
+    /**
+     * Checks if a field is sorted.
+     *
+     * @parameters `field` - The field to check.
+     *
+     * @parameters `includingNoneOrdered` - Whether to include the `'None'` ordered options.
+     * (Default: `true`)
+     *
+     * @returnings `true` if the field is sorted, `false` otherwise.
+     *
+     * @exampleUsage
+     * ```TypeScript
+     * const isSorted = tablor.isFieldSorted('name');
+     * // true
+     * ```
+     */
+    isFieldSorted
+        = this.sorter.isFieldSorted.bind(this.sorter)
 
     /**
      * Gets the sorted items.

@@ -2,7 +2,7 @@ import { ImmutableAugmentedItem, Item } from '../stores/items-store/interfaces'
 
 
 /**
- * Specifies the behavior for handling previously sorted fields.
+ * Defines how previously sorted fields are handled when inserting or modifying a field.
  */
 export type InsertBehavior<T extends Item<T>, K extends keyof T> =
     | {
@@ -21,9 +21,8 @@ export type InsertBehavior<T extends Item<T>, K extends keyof T> =
 
     /**
      * Describes the action to perform relative to the target field:
-     * - 'MakeSuper': The new options will act as a super sorting field for the target field.
-     * - 'MakeNested': The new options will become nested sorting options under the target field.
-     * - 'Replace': The new options will replace the target field's options.
+     * - 'Replace': Replace the target field's options.
+     * - 'Push': Add the new options to the target field.
      */
     action: 'Replace' | 'Push';
 }
@@ -37,16 +36,18 @@ export type InsertBehavior<T extends Item<T>, K extends keyof T> =
     /**
      * Specifies the target field or position index for the strategy.
      * - If a key from the item, operations will be relative to the field's sorting.
-     * - If a number, operations will be performed at the specified index.
      */
     target: keyof T;
 
+    /**
+     * Defines the behavior if the target field is not found.
+     */
     notFoundBehavior: InsertBehavior<T, K>;
 
     /**
      * Describes the action to perform relative to the target field:
-     * - 'MakeSuper': The new options will act as a super sorting field for the target field.
-     * - 'MakeNested': The new options will become nested sorting options under the target field.
+     * - 'NewAsSuper': The new options will act as a super sorting field for the target field.
+     * - 'NewAsNested': The new options will become nested sorting options under the target field.
      * - 'Replace': The new options will replace the target field's options.
      */
     action: 'NewAsSuper' | 'NewAsNested' | 'Replace';
@@ -54,14 +55,14 @@ export type InsertBehavior<T extends Item<T>, K extends keyof T> =
     | {
     /**
      * The strategy to determine where to position the field based on predefined rules.
-     * - 'PresetPosition': uses predefined positions like 'First', 'Last', or 'SameType'.
+     * - 'PresetPosition': uses predefined positions like 'Start' or 'End'.
      */
     strategy: 'PresetPosition';
 
     /**
      * Indicates the predefined position for the field:
-     * - 'Start': position at the start of the sorting list.
-     * - 'End': position at the end of the sorting list.
+     * - 'Start': Position at the start of the sorting list.
+     * - 'End': Position at the end of the sorting list.
      */
     target: 'Start' | 'End';
 
@@ -74,17 +75,13 @@ export type InsertBehavior<T extends Item<T>, K extends keyof T> =
     | {
     /**
      * The strategy to determine where to position the field based on its type.
-     * - 'PresetPosition': uses predefined positions like 'First', 'Last', or 'SameType'.
+     * - 'PresetPosition': uses predefined positions like 'SameType'.
      */
     strategy: 'PresetPosition';
 
     /**
      * Specifies the target type for the field:
-     * - 'SameType': targets a field of the same type.
-     *
-     * @remarks
-     * if the field is not of the same type,
-     * the field will be pushed to the end of the sorting list.
+     * - 'SameType': Targets a field of the same type.
      */
     target: 'SameType';
 
@@ -94,28 +91,105 @@ export type InsertBehavior<T extends Item<T>, K extends keyof T> =
      */
     action: 'Replace';
 
+    /**
+     * Defines the behavior if the target field is not found.
+     */
     notFoundBehavior: InsertBehavior<T, K>;
 };
 
 /**
  * Represents options for defining a sorting operation before processing.
  */
-export type DraftSortingOption<T extends Item<T>, K extends keyof T> = {
-    /**
-     * The field (key of `T`) to sort by.
-     */
-    field: K;
+type DraftSortingOrder =
+    | {
 
     /**
      * Sorting order:
      * - 'ASC': Ascending.
      * - 'DESC': Descending.
      * - 'ORIGINAL': Original order.
+     * - 'NONE': No sorting.
      * - 'Toggle': Toggle between ascending and descending.
      */
-    order: 'ASC' | 'DESC' | 'ORIGINAL' | 'Toggle';
+    order: 'ASC' | 'DESC' | 'ORIGINAL' | 'NONE';
 
-    firstOrderOnToggle?: 'ASC' | 'DESC';
+    supportedToggleOrders?: undefined;
+
+    toggleOrderIndex?: undefined;
+}
+    | {
+
+    /**
+     * Sorting order:
+     * - 'ASC': Ascending.
+     * - 'DESC': Descending.
+     * - 'ORIGINAL': Original order.
+     * - 'NONE': No sorting.
+     * - 'Toggle': Toggle between ascending and descending.
+     */
+    order: 'Toggle';
+
+    /**
+     * Supported toggle orders for sorting.
+     */
+    supportedToggleOrders?: ('ASC' | 'DESC' | 'ORIGINAL' | 'NONE')[];
+
+    /**
+     * The index of the currently active toggle order.
+     */
+    toggleOrderIndex?: number;
+}
+
+/**
+ * Represents options for defining a sorting operation after processing.
+ */
+type ProcessedSortingOrder =
+    | {
+
+    /**
+     * Sorting order:
+     * - 'ASC': Ascending.
+     * - 'DESC': Descending.
+     * - 'ORIGINAL': Original order.
+     * - 'NONE': No sorting.
+     */
+    order: 'ASC' | 'DESC' | 'ORIGINAL' | 'NONE'
+
+    supportedToggleOrders?: undefined;
+
+    toggleOrderIndex?: undefined;
+}
+    | {
+
+    /**
+     * Sorting order:
+     * - 'ASC': Ascending.
+     * - 'DESC': Descending.
+     * - 'ORIGINAL': Original order.
+     * - 'NONE': No sorting.
+     */
+    order: 'ASC' | 'DESC' | 'ORIGINAL' | 'NONE'
+
+    /**
+     * Supported toggle orders for sorting.
+     */
+    supportedToggleOrders: ('ASC' | 'DESC' | 'ORIGINAL' | 'NONE')[];
+
+    /**
+     * The index of the currently active toggle order.
+     */
+    toggleOrderIndex: number;
+}
+
+/**
+ * Represents options for defining a sorting operation before processing.
+ */
+export type DraftSortingOptions<T extends Item<T>, K extends keyof T> = DraftSortingOrder & {
+
+    /**
+     * The field (key of `T`) to sort by.
+     */
+    field: K;
 
     /**
      * Behavior when handling previously sorted fields.
@@ -134,8 +208,8 @@ export type DraftSortingOption<T extends Item<T>, K extends keyof T> = {
         /**
          * Ignores whitespace for string fields.
          */
-        ignoreWhitespacesIfString?: boolean;
-    },
+        ignoreWhitespacesIfString?: boolean,
+    };
 
     /**
      * Options for fields with values of a type `number`.
@@ -144,8 +218,8 @@ export type DraftSortingOption<T extends Item<T>, K extends keyof T> = {
         /**
          * Ignores decimal points for numeric fields.
          */
-        ignoreDecimalsIfNumber?: boolean;
-    },
+        ignoreDecimalsIfNumber?: boolean,
+    };
 
     /**
      * Custom comparison function for sorting.
@@ -189,13 +263,13 @@ export type DraftSortingOption<T extends Item<T>, K extends keyof T> = {
     clear?: {
         /**
          * The scope of fields to be cleared:
-         * - 'All': clear all previously sorted fields.
-         * - 'AllNested': clear all nested fields.
-         * - 'AllParent': clear all parent fields.
-         * - undefined: do not clear any fields.
+         * - 'All': Clear all previously sorted fields.
+         * - 'AllNested': Clear all nested fields.
+         * - 'AllParent': Clear all parent fields.
+         * - undefined: Do not clear any fields.
          */
-        target: 'All' | 'AllNested' | 'AllParent' | undefined
-    },
+        target: 'All' | 'AllNested' | 'AllParent' | undefined,
+    };
 
     /**
      * Callback to process sorting options after they are handled.
@@ -204,27 +278,19 @@ export type DraftSortingOption<T extends Item<T>, K extends keyof T> = {
         processedOption: ProcessedSortingOptions<T, K>,
         prevOption: ImmutableProcessedSortingOption<T, K> | undefined,
         allPrevOptions: Readonly<ImmutableProcessedSortingOption<T, keyof T>[]>,
-    ) => void;
-};
+    ) => void,
+}
 
 /**
  * Represents options for defining a sorting operation after processing.
  * This type includes all the necessary details for executing sorting
  * operations on a collection of items.
  */
-export type ProcessedSortingOptions<T extends Item<T>, K extends keyof T> = {
+export type ProcessedSortingOptions<T extends Item<T>, K extends keyof T> = ProcessedSortingOrder & {
     /**
      * The field (key of type `T`) to sort by.
      */
     field: K;
-
-    /**
-     * Sorting order to be applied:
-     * - 'ASC': sort in ascending order.
-     * - 'DESC': sort in descending order.
-     * - 'ORIGINAL': preserve the original order.
-     */
-    order: 'ASC' | 'DESC' | 'ORIGINAL';
 
     /**
      * Options for fields with values of a type `string`.
@@ -304,6 +370,9 @@ export type ProcessedSortingOptions<T extends Item<T>, K extends keyof T> = {
     prioritizeUndefineds: 'AlwaysFirst' | 'AlwaysLast' | 'FirstOnASC' | 'LastOnASC';
 };
 
+/**
+ * Represents processed sorting options with metadata for additional configuration.
+ */
 export type ProcessedSortingOptionsWithMeta<T, K extends keyof T> = Readonly<ProcessedSortingOptions<T, K>> & {
     /**
      * Defines the behavior for inserting or replacing previously sorted fields.
@@ -320,8 +389,8 @@ export type ProcessedSortingOptionsWithMeta<T, K extends keyof T> = Readonly<Pro
          * - 'AllNested': clear all nested fields.
          * - 'AllParent': clear all parent fields.
          */
-        target: 'All' | 'AllNested' | 'AllParent' | undefined
-    },
+        target: 'All' | 'AllNested' | 'AllParent' | undefined;
+    };
 };
 
 /**

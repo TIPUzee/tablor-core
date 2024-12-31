@@ -1,6 +1,6 @@
 # Tablor Core
 
-### Beta/Master Branch
+### Beta/Optimized Branch
 
 This is the beta version of Tablor Core for optimization. Please use this branch for development and testing.
 Or you should use beta/master version for adding new features.

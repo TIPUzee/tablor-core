@@ -64,10 +64,11 @@ describe('Searcher Class Tests', () =>
         fieldsStore = new FieldsStore<SampleItemType>()
         itemsStore = new ItemsStore<SampleItemType>(allItems, fieldsStore)
         searcher = new Searcher<SampleItemType>(
+            fieldsStore.hasField.bind(fieldsStore),
+            fieldsStore.getFieldsAsArray.bind(fieldsStore),
             allItems,
             allSearchedItems,
             searchResults,
-            fieldsStore,
             itemsStore.$itemsAdded,
             itemsStore.$itemsRemoved,
             itemsStore.$itemsUpdated,
@@ -93,7 +94,6 @@ describe('Searcher Class Tests', () =>
     {
         searcher.searchByStringQuery({
             query: 'John',
-            includeFields: [],
         })
 
         expect(searcher.getItems()).toEqual([
@@ -176,6 +176,9 @@ describe('Searcher Class Tests', () =>
     {
         searcher.searchByStringQuery({
             query: '66000',
+            convertToString: {
+                number: n => n.toString(),
+            }
         })
 
         expect(searcher.getItems()).toEqual([
@@ -187,7 +190,6 @@ describe('Searcher Class Tests', () =>
     {
         searcher.searchByStringQuery({
             query: '66000',
-            convertNonStringTypes: ['string'],
         })
 
         expect(searcher.getItems()).toEqual([])
@@ -197,7 +199,9 @@ describe('Searcher Class Tests', () =>
     {
         searcher.searchByStringQuery({
             query: '66000',
-            convertNonStringTypes: ['number'],
+            convertToString: {
+                number: n => n.toString(),
+            },
         })
 
         expect(searcher.getItems()).toEqual([
@@ -210,7 +214,9 @@ describe('Searcher Class Tests', () =>
     {
         searcher.searchByStringQuery({
             query: '2019-11-01',
-            convertNonStringTypes: ['date'],
+            convertToString: {
+                date: d => d.toISOString(),
+            },
         })
 
         expect(searcher.getItems()).toEqual([
@@ -848,15 +854,6 @@ describe('Searcher Class Tests', () =>
                 includeFields: ['name'],
                 searchTarget: { scope: 'All' },
             })
-
-            const expected = findItems(
-                itemsStore.getItems(),
-                'name',
-                v => v.toLowerCase().includes('john'),
-                i => i.hire_date !== null
-                    && i.hire_date.getTime() > date.getTime(),
-                true,
-            )
 
             expect(searcher.getItems()).toEqual(
                 findItems(

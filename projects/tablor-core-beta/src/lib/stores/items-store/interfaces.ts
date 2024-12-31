@@ -9,6 +9,11 @@ export type PrimitiveTypes = string | number | boolean | null | undefined | Date
 export type PrimitiveTypesAsString = 'string' | 'number' | 'boolean' | 'null' | 'undefined' | 'date';
 
 /**
+ * Defines primitive types used in data items as strings for type checking.
+ */
+export type PrimitiveTypesAsStringExcludeString = 'number' | 'boolean' | 'null' | 'undefined' | 'date';
+
+/**
  * A regular data item.
  */
 export type Item<T extends Record<string, PrimitiveTypes>> = {

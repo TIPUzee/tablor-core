@@ -5,10 +5,9 @@ import {
     ItemsAddedPayload, ItemsRemovedPayload,
     ItemsUpdatedPayload,
 } from '../stores/items-store/interfaces'
-import { FieldsStore } from '../stores/fields-store/fields-store'
 import { Subject } from 'rxjs'
 import {
-    DraftSortingOption,
+    DraftSortingOptions,
     ImmutableProcessedSortingOption,
     InsertBehavior, ItemsSortedPayload,
     ProcessedSortingOptions,
@@ -34,7 +33,7 @@ export class Sorter<T extends Item<T>>
 
 
     constructor(
-        protected readonly fieldsStore: FieldsStore<T>,
+        protected readonly hasField: (key: keyof T) => boolean,
         protected readonly searchResults: AugmentedItem<T>[],
         protected readonly $searchedItemsChanged: Subject<SearchedItemsChangedPayload<T>>,
         protected readonly $itemsAdded: Subject<ItemsAddedPayload<T>>,
@@ -52,16 +51,71 @@ export class Sorter<T extends Item<T>>
     /**
      * Returns the current sorting options
      */
-    public getOptions(): Readonly<ImmutableProcessedSortingOption<T, keyof T>[]>
+    public getOptions(includingNoneOrdered: boolean = true): Readonly<ImmutableProcessedSortingOption<T, keyof T>[]>
     {
-        return this._options
+        if (includingNoneOrdered)
+            return this._options
+
+        return this._options.filter(o => o.order !== 'NONE')
+    }
+
+
+    /**
+     * Returns the keys of all current sorting options
+     */
+    public getSortingFieldKeys(includingNoneOrdered: boolean = true): (keyof T)[]
+    {
+        if (includingNoneOrdered)
+            return this._options.map(o => o.field)
+
+        return this._options.filter(o => o.order !== 'NONE').map(o => o.field)
+    }
+
+
+    /**
+     * Returns the order of all current sorting options
+     */
+    public getSortingFieldOrders(includingNoneOrdered: boolean = true): ProcessedSortingOptions<T, keyof T>['order'][]
+    {
+        if (includingNoneOrdered)
+            return this._options.map(o => o.order)
+
+        return this._options.filter(o => o.order !== 'NONE').map(o => o.order)
+    }
+
+
+    /**
+     * Returns the order of a specific sorting option
+     */
+    public getSortingFieldOrder(indexOrKey: number | keyof T): ProcessedSortingOptions<T, keyof T>['order'] | undefined
+    {
+        if (typeof indexOrKey === 'number')
+        {
+            indexOrKey = indexOrKey % this._options.length
+            indexOrKey = indexOrKey < 0 ? this._options.length + indexOrKey : indexOrKey
+            return this._options[indexOrKey].order
+        }
+
+        return this._options.find(o => o.field === indexOrKey)?.order
+    }
+
+
+    /**
+     * Returns whether a field is currently sorted
+     */
+    public isFieldSorted(field: keyof T, includingNoneOrdered: boolean = true): boolean
+    {
+        if (includingNoneOrdered)
+            return this._options.some(o => o.field === field)
+
+        return this._options.some(o => o.field === field && o.order !== 'NONE')
     }
 
 
     /**
      * Returns the current sorted items
      */
-    public getItems(): ImmutableAugmentedItem<T>[]
+    public getItems(): Readonly<ImmutableAugmentedItem<T>[]>
     {
         return this.searchResults
     }
@@ -84,7 +138,7 @@ export class Sorter<T extends Item<T>>
      */
     public clearSort(): void
     {
-        const prevOptions = [...this._options]
+        const prevOptions = [...this.getOptions(true)]
         this._options.splice(0)
         this._sortingRanges.splice(0)
 
@@ -94,7 +148,7 @@ export class Sorter<T extends Item<T>>
         this.searchResults.sort(sortFn)
 
         this.$sortingOptionsChanged.next({
-            options: this._options,
+            options: this.getOptions(true),
             prevOptions,
         })
     }
@@ -103,22 +157,25 @@ export class Sorter<T extends Item<T>>
     /**
      * Sorts the items based on the provided options.
      */
-    public sort<K extends keyof T>(options: DraftSortingOption<T, K>): void
+    public sort<K extends keyof T>(options: DraftSortingOptions<T, K>): void
     {
-        const prevOptions = [...this._options]
+        if (!this.hasField(options.field))
+            return
+
+        const prevOptions = [...this.getOptions(true)]
         const prevSortedItems = [...this.searchResults]
 
         const processedOptions = this.processOptionsWithMeta(options)
 
         const optionsIndex = this.addNewOptions(processedOptions)
 
-        for (let currOptionsIndex = optionsIndex; currOptionsIndex < this._options.length; currOptionsIndex++)
+        for (let currOptionsIndex = optionsIndex; currOptionsIndex < this.getOptions(true).length; currOptionsIndex++)
         {
             this.sortItems(currOptionsIndex)
         }
 
         this.$sortingOptionsChanged.next({
-            options: this._options,
+            options: this.getOptions(true),
             prevOptions: prevOptions,
         })
 
@@ -141,15 +198,18 @@ export class Sorter<T extends Item<T>>
     {
         this._sortingRanges.splice(optionsIndex, this._sortingRanges.length)
 
-        const currOptions: ImmutableProcessedSortingOption<T, K> = this._options[optionsIndex] as any
+        const currOptions: ImmutableProcessedSortingOption<T, K> = this.getOptions(true)[optionsIndex] as any
 
         const currCompareFn: ProcessedSortingOptions<T, K>['customCompareFn'] =
-            currOptions.order === 'ORIGINAL' ?
-            (a, b) => (a.tablorMeta.uuid - b.tablorMeta.uuid) * -1 : currOptions.customCompareFn
+            currOptions.order === 'ORIGINAL' || currOptions.order === 'NONE' ?
+            (a, b) => (a.tablorMeta.uuid - b.tablorMeta.uuid) * -1 :
+            currOptions.customCompareFn
 
         const currCompareFnForNestedMatch: ProcessedSortingOptions<T, K>['customCompareFnForNestedMatch'] =
             currOptions.order === 'ORIGINAL' ?
             (a, b) => (a.tablorMeta.uuid - b.tablorMeta.uuid) * -1 :
+            currOptions.order === 'NONE' ?
+            () => 0 :
             currOptions.customCompareFnForNestedMatch
 
         if (optionsIndex === 0)
@@ -259,7 +319,7 @@ export class Sorter<T extends Item<T>>
     {
         if (items.length <= 1) return items
 
-        const options: ProcessedSortingOptions<T, K> = this._options[optionsIndex] as any
+        const options: ProcessedSortingOptions<T, K> = this.getOptions(true)[optionsIndex] as any
 
         const orderedCompareFn: (a: ImmutableAugmentedItem<T>, b: ImmutableAugmentedItem<T>) => number =
             (a, b) =>
@@ -276,29 +336,58 @@ export class Sorter<T extends Item<T>>
     /**
      * Transforms the given draft options into processed options with meta-data.
      */
-    protected processOptionsWithMeta<K extends keyof T>(options: DraftSortingOption<T, K>): ProcessedSortingOptionsWithMeta<T, K>
+    protected processOptionsWithMeta<K extends keyof T>(options: DraftSortingOptions<T, K>): ProcessedSortingOptionsWithMeta<T, K>
     {
-        const prevIndex = this.getOptions().findIndex(
+        const optionsPrevIndex = this.getOptions().findIndex(
             option => option.field === options.field,
         )
 
-        const nextOrder: Record<ImmutableProcessedSortingOption<T, K>['order'], ImmutableProcessedSortingOption<T, K>['order']> = {
-            ASC: 'DESC',
-            DESC: 'ORIGINAL',
-            ORIGINAL: 'ASC',
+        const prevOptions: ProcessedSortingOptions<T, K> | undefined = this._options[optionsPrevIndex] as any
+
+        let newOrder: ProcessedSortingOptions<T, K>['order'] | number
+
+        let newSupportedToggleOrders: ProcessedSortingOptions<T, K>['supportedToggleOrders'] = []
+
+        if (options.order === 'Toggle')
+        {
+            newSupportedToggleOrders =
+                options.supportedToggleOrders !== undefined ?
+                options.supportedToggleOrders : ['ASC', 'DESC', 'NONE']
+
+            if (options.toggleOrderIndex !== undefined)
+            {
+                if (options.toggleOrderIndex >= newSupportedToggleOrders.length || options.toggleOrderIndex < 0)
+                    throw new Error('Toggle order index is out of range.')
+
+                newOrder = options.toggleOrderIndex
+            }
+
+            else if (prevOptions === undefined)
+                newOrder = 0
+
+            else
+            {
+                if (prevOptions.supportedToggleOrders === undefined)
+                    newOrder = newSupportedToggleOrders.indexOf(prevOptions.order) + 1
+                else
+                    newOrder = prevOptions.supportedToggleOrders.indexOf(prevOptions.order) + 1
+            }
+        }
+        else
+        {
+            newOrder = options.order
+        }
+
+        if (typeof newOrder === 'number')
+        {
+            newOrder = newOrder % newSupportedToggleOrders.length
+            newOrder = newOrder < 0 ? newOrder + newSupportedToggleOrders.length : newOrder
         }
 
         const newOptions: ProcessedSortingOptionsWithMeta<T, K> = {
             field: options.field,
 
-            order:
-                options.order === 'Toggle' ?
-                (
-                    prevIndex === -1 ?
-                    (options.firstOrderOnToggle !== undefined ? options.firstOrderOnToggle : 'ASC') :
-                    (nextOrder[this.getOptions()[prevIndex].order])
-                ) :
-                options.order,
+            order: typeof newOrder === 'number' ? newSupportedToggleOrders[newOrder] : (newOrder),
 
             stringOptions: {
                 isCaseSensitiveIfString:
@@ -353,10 +442,19 @@ export class Sorter<T extends Item<T>>
             },
         }
 
+        if (typeof newOrder === 'number')
+        {
+            // @ts-ignore
+            (newOptions as any).supportedToggleOrders = newSupportedToggleOrders;
+
+            // @ts-ignore
+            (newOptions as any).toggleOrderIndex = newOrder
+        }
+
         if (options.processingCallback)
             options.processingCallback(
                 newOptions,
-                this.getOptions()[prevIndex] as any,
+                this.getOptions()[optionsPrevIndex] as any,
                 this.getOptions(),
             )
 
@@ -369,7 +467,7 @@ export class Sorter<T extends Item<T>>
      */
     protected removeMeta<K extends keyof T>(options: ProcessedSortingOptionsWithMeta<T, K>): ProcessedSortingOptions<T, K>
     {
-        return {
+        const newOptions = {
             field: options.field,
             order: options.order,
             stringOptions: options.stringOptions,
@@ -379,6 +477,16 @@ export class Sorter<T extends Item<T>>
             prioritizeNulls: options.prioritizeNulls,
             prioritizeUndefineds: options.prioritizeUndefineds,
         }
+
+        if (options.supportedToggleOrders)
+        {
+            // @ts-ignore
+            newOptions.supportedToggleOrders = options.supportedToggleOrders
+            // @ts-ignore
+            newOptions.toggleOrderIndex = options.toggleOrderIndex
+        }
+
+        return newOptions
     }
 
 

@@ -37,17 +37,18 @@ describe('NvPaginator', () =>
         itemsStore = new ItemsStore<SampleItemType>(allItems, fieldsStore)
 
         searcher = new Searcher<SampleItemType>(
+            fieldsStore.hasField.bind(fieldsStore),
+            fieldsStore.getFieldsAsArray.bind(fieldsStore),
             allItems,
             allSearchedItems,
             searchResults,
-            fieldsStore,
             itemsStore.$itemsAdded,
             itemsStore.$itemsRemoved,
             itemsStore.$itemsUpdated,
         )
 
         sorter = new Sorter<SampleItemType>(
-            fieldsStore,
+            fieldsStore.hasField.bind(fieldsStore),
             searchResults,
             searcher.$searchedItemsChanged,
             itemsStore.$itemsAdded,
@@ -82,17 +83,18 @@ describe('NvPaginator', () =>
         itemsStore = new ItemsStore<SampleItemType>(allItems, fieldsStore)
 
         searcher = new Searcher<SampleItemType>(
+            fieldsStore.hasField.bind(fieldsStore),
+            fieldsStore.getFieldsAsArray.bind(fieldsStore),
             allItems,
             allSearchedItems,
             searchResults,
-            fieldsStore,
             itemsStore.$itemsAdded,
             itemsStore.$itemsRemoved,
             itemsStore.$itemsUpdated,
         )
 
         sorter = new Sorter<SampleItemType>(
-            fieldsStore,
+            fieldsStore.hasField.bind(fieldsStore),
             searchResults,
             searcher.$searchedItemsChanged,
             itemsStore.$itemsAdded,

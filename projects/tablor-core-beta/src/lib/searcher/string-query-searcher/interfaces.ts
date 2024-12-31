@@ -1,4 +1,4 @@
-import { PrimitiveTypesAsString } from '../../stores/items-store/interfaces'
+import { Item } from '../../stores/items-store/interfaces'
 
 
 /**
@@ -12,23 +12,140 @@ import { PrimitiveTypesAsString } from '../../stores/items-store/interfaces'
 export type WordMatchStrategy = 'ExactMatch' | 'Contains' | 'StartsWith' | 'EndsWith'
 
 /**
- * Options for processing a string query.
+ * Fields to include in the search.
  */
-export type StringQueryOpts<T> = {
+export type DraftStringQueryFieldIncludeOptions<T extends Item<T>> =
+    | {
     /**
-     * A query string or an array of query strings. (Default: "")
-     */
-    query: string | string[];
-
-    /**
-     * An array of fields to search in. (Default: [])
+     * An array of fields to exclude from search.
      */
     includeFields?: (keyof T)[];
 
     /**
-     * An array of fields to exclude from search. (Default: [])
+     * An array of fields to exclude from search.
      */
-    excludeFields?: (keyof T)[];
+    excludeFields?: never[];
+
+    /**
+     * Whether the words in the query must be matched in the same order as they appear in the query.
+     *
+     * @remarks
+     * This option enforces to look all words in a `single field` in the same order as they appear in the query.
+     * - This option is compatible with the only one field to search in.
+     */
+    wordsInOrder?: false;
+
+    /**
+     * Whether the words in the query must be matched in a consecutive manner as they appear in the query.
+     *
+     * @remarks
+     * This option enforces to look all words in a `single field` in a consecutive manner as they appear in the query.
+     * - This option is compatible with the only one field to search in.
+     */
+    consecutiveWords?: false;
+}
+    | {
+    /**
+     * An array of fields to exclude from search.
+     */
+    includeFields?: never[];
+
+    /**
+     * An array of fields to exclude from search.
+     */
+    excludeFields: (keyof T)[];
+
+    /**
+     * Whether the words in the query must be matched in the same order as they appear in the query.
+     *
+     * @remarks
+     * This option enforces to look all words in a `single field` in the same order as they appear in the query.
+     * - This option is compatible with the only one field to search in.
+     */
+    wordsInOrder?: false;
+
+    /**
+     * Whether the words in the query must be matched in a consecutive manner as they appear in the query.
+     *
+     * @remarks
+     * This option enforces to look all words in a `single field` in a consecutive manner as they appear in the query.
+     * - This option is compatible with the only one field to search in.
+     */
+    consecutiveWords?: false;
+}
+    | {
+    /**
+     * An array of fields to exclude from search.
+     *
+     * @remarks
+     * Provide only one field to search in if you are using the `wordsInOrder` option.
+     */
+    includeFields: [keyof T];
+
+    /**
+     * An array of fields to exclude from search.
+     */
+    excludeFields?: never[];
+
+    /**
+     * Whether the words in the query must be matched in the same order as they appear in the query.
+     *
+     * @remarks
+     * This option enforces to look all words in a `single field` in the same order as they appear in the query.
+     * - This option is compatible with the only one field to search in.
+     */
+    wordsInOrder: true;
+
+    /**
+     * Whether the words in the query must be matched in a consecutive manner as they appear in the query.
+     *
+     * @remarks
+     * This option enforces to look all words in a `single field` in a consecutive manner as they appear in the query.
+     * - This option is compatible with the only one field to search in.
+     */
+    consecutiveWords?: boolean;
+}
+    | {
+    /**
+     * An array of fields to exclude from search.
+     *
+     * @remarks
+     * Provide only one field to search in if you are using the `wordsInOrder` option.
+     */
+    includeFields: [keyof T];
+
+    /**
+     * An array of fields to exclude from search.
+     */
+    excludeFields?: never[];
+
+    /**
+     * Whether the words in the query must be matched in the same order as they appear in the query.
+     *
+     * @remarks
+     * This option enforces to look all words in a `single field` in the same order as they appear in the query.
+     * - This option is compatible with the only one field to search in.
+     */
+    wordsInOrder?: boolean;
+
+    /**
+     * Whether the words in the query must be matched in a consecutive manner as they appear in the query.
+     *
+     * @remarks
+     * This option enforces to look all words in a `single field` in a consecutive manner as they appear in the query.
+     * - This option is compatible with the only one field to search in.
+     */
+    consecutiveWords: true;
+}
+
+/**
+ * Draft options for processing a string query.
+ */
+export type DraftStringQueryOptions<T extends Item<T>> = DraftStringQueryFieldIncludeOptions<T> & {
+    /**
+     * A query string. (Default: "")
+     */
+    query: string;
 
     /**
      * A strategy to match a word in a query string with a word in an item. (Default: "ExactMatch")
@@ -38,17 +155,42 @@ export type StringQueryOpts<T> = {
     /**
      * Whether all words in the query must be matched in the item. (Default: false)
      */
-    mustMatchAllWords?: boolean;
+    requireAllWords?: boolean;
 
     /**
-     * Whether the words in the query must be matched in the same order as they appear in the query. (Default: false)
+     * An object of functions to convert any types to strings.
      */
-    wordsMustBeInOrder?: boolean;
+    convertToString?: {
+        /**
+         * A function to convert a string to a string. Undefined if you do not want to perform search on strings.
+         */
+        string?: (val: string) => string
 
-    /**
-     * An array of primitive types to convert to strings. (Default: [])
-     */
-    convertNonStringTypes?: PrimitiveTypesAsString[]
+        /**
+         * A function to convert a null to a string. Undefined if you do not want to perform search on null.
+         */
+        null?: (val: null) => string
+
+        /**
+         * A function to convert an undefined to a string. Undefined if you do not want to perform search on undefined.
+         */
+        undefined?: (val: undefined) => string
+
+        /**
+         * A function to convert a boolean to a string. Undefined if you do not want to perform search on booleans.
+         */
+        boolean?: (val: boolean) => string
+
+        /**
+         * A function to convert a number to a string. Undefined if you do not want to perform search on numbers.
+         */
+        number?: (val: number) => string
+
+        /**
+         * A function to convert a date to a string. Undefined if you do not want to perform search on dates.
+         */
+        date?: (val: Date) => string
+    }
 
     /**
      * Whether to ignore whitespace in the query and item. (Default: false)
@@ -56,9 +198,9 @@ export type StringQueryOpts<T> = {
     ignoreWhitespace?: boolean;
 
     /**
-     * The separator between words in the query. (Default: " ")
+     * An array of word separators. (Default: [ " " ])
      */
-    wordSeparator?: string;
+    wordSeparators?: (string | RegExp | ((query: string) => string[]))[];
 
     /**
      * Whether the search is case-sensitive. (Default: false)
@@ -66,30 +208,74 @@ export type StringQueryOpts<T> = {
     isCaseSensitive?: boolean;
 }
 
-
 /**
- * Options for processing a string query.
+ * Processed fields to include in the search.
  */
-export type ProcStringQueryOpts<T> = {
-    /**
-     * A query string or an array of query strings.
-     */
-    query: string | string[];
-
-    /**
-     * An array of fields to search in.
-     */
-    words: string[];
-
+export type ProcessedStringQueryFieldIncludeOptions<T extends Item<T>> =
+    | {
     /**
      * An array of fields to exclude from search.
      */
     includeFields: (keyof T)[];
 
     /**
-     * An array of fields to exclude from search.
+     * Whether the words in the query must be matched in the same order as they appear in the query.
+     *
+     * @remarks
+     * This option enforces to look all words in a `single field` in the same order as they appear in the query.
+     * - This option is compatible with the only one field to search in.
      */
-    excludeFields: (keyof T)[];
+    wordsInOrder: false;
+
+    /**
+     * Whether the words in the query must be matched in a consecutive manner as they appear in the query.
+     *
+     * @remarks
+     * This option enforces to look all words in a `single field` in a consecutive manner as they appear in the query.
+     * - This option is compatible with the only one field to search in.
+     */
+    consecutiveWords: false;
+}
+    | {
+    /**
+     * An array of fields to exclude from search.
+     *
+     * @remarks
+     * Provide only one field to search in if you are using the `wordsInOrder` option.
+     */
+    includeFields: [keyof T];
+
+    /**
+     * Whether the words in the query must be matched in the same order as they appear in the query.
+     *
+     * @remarks
+     * This option enforces to look all words in a `single field` in the same order as they appear in the query.
+     * - This option is compatible with the only one field to search in.
+     */
+    wordsInOrder: boolean;
+
+    /**
+     * Whether the words in the query must be matched in a consecutive manner as they appear in the query.
+     *
+     * @remarks
+     * This option enforces to look all words in a `single field` in a consecutive manner as they appear in the query.
+     * - This option is compatible with the only one field to search in.
+     */
+    consecutiveWords: boolean;
+}
+/**
+ * Processed options a string query.
+ */
+export type ProcessedStringQueryOptions<T extends Item<T>> = ProcessedStringQueryFieldIncludeOptions<T> & {
+    /**
+     * A query string.
+     */
+    query: string;
+
+    /**
+     * An array of fields to search in.
+     */
+    words: string[];
 
     /**
      * A strategy to match a word in a query string with a word in an item.
@@ -99,17 +285,42 @@ export type ProcStringQueryOpts<T> = {
     /**
      * Whether all words in the query must be matched in the item.
      */
-    mustMatchAllWords: boolean;
+    requireAllWords: boolean;
 
     /**
-     * Whether the words in the query must be matched in the same order as they appear in the query.
+     * An object of functions to convert any types to string.
      */
-    wordsMustBeInOrder: boolean;
+    convertToString: {
+        /**
+         * A function to convert a string to a string. Undefined if you do not want to perform search on strings.
+         */
+        string?: (val: string) => string
 
-    /**
-     * An array of primitive types to convert to strings.
-     */
-    convertNonStringTypes: PrimitiveTypesAsString[]
+        /**
+         * A function to convert a null to a string. Undefined if you do not want to perform search on null.
+         */
+        null?: (val: null) => string
+
+        /**
+         * A function to convert an undefined to a string. Undefined if you do not want to perform search on undefined.
+         */
+        undefined?: (val: undefined) => string
+
+        /**
+         * A function to convert a boolean to a string. Undefined if you do not want to perform search on booleans.
+         */
+        boolean?: (val: boolean) => string
+
+        /**
+         * A function to convert a number to a string. Undefined if you do not want to perform search on numbers.
+         */
+        number?: (val: number) => string
+
+        /**
+         * A function to convert a date to a string. Undefined if you do not want to perform search on dates.
+         */
+        date?: (val: Date) => string
+    }
 
     /**
      * Whether to ignore whitespace in the query and item.
@@ -117,9 +328,9 @@ export type ProcStringQueryOpts<T> = {
     ignoreWhitespace: boolean;
 
     /**
-     * The separator between words in the query.
+     * An array of word separators.
      */
-    wordSeparator: string;
+    wordSeparators: (string | RegExp | ((query: string) => string[]))[];
 
     /**
      * Whether the search is case-sensitive.

@@ -30,6 +30,8 @@ import {
     SortedItemsChangedPayload,
     ImmutableProcessedSortingOption,
     InsertBehavior,
+    DraftSortingOptions,
+    ProcessedSortingOptions,
 } from '../sorter/interfaces'
 
 import {
@@ -150,6 +152,8 @@ export type TablorCoreTypes<T extends Item<T>, K extends keyof T = keyof T> = {
     SortedItemsChangedPayload: SortedItemsChangedPayload<T>,
     ImmutableProcessedSortingOption: ImmutableProcessedSortingOption<T, K>,
     InsertBehavior: InsertBehavior<T, K>,
+    DraftSortingOption: DraftSortingOptions<T, K>,
+    ProcessedSortingOption: ProcessedSortingOptions<T, K>,
 
     DraftSearchableOptions: DraftSearchableOptions<T>,
     ItemsSearchedPayload: ItemsSearchedPayload<T>,
@@ -175,5 +179,4 @@ export type TablorCoreTypes<T extends Item<T>, K extends keyof T = keyof T> = {
     PaginatedItemsChangedPayload: PaginatedItemsChangedPayload<T>,
 
     ItemsSelectionChangedPayload: ItemsSelectionChangedPayload<T>,
-
 }

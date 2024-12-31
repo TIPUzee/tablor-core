@@ -15,7 +15,6 @@ export class FieldsStore<T extends Item<T>>
 
     /**
      * Initialize with an event manager for handling field updates.
-     * @param events
      */
     constructor()
     {
@@ -30,6 +29,33 @@ export class FieldsStore<T extends Item<T>>
     public getFields(): ProcessedFields<T>
     {
         return this._allFields
+    }
+
+
+    /**
+     * Get a field by key.
+     */
+    public getField<K extends keyof T>(key: K): ProcessedField<T, K> | undefined
+    {
+        return this._allFields[key]
+    }
+
+
+    /**
+     * Get all field keys.
+     */
+    public getFieldsKeys(): (keyof T)[]
+    {
+        return Object.keys(this._allFields) as (keyof T)[]
+    }
+
+
+    /**
+     * Check if a field exists.
+     */
+    public hasField<K extends keyof T>(key: K): boolean
+    {
+        return key in this._allFields
     }
 
 
@@ -68,7 +94,7 @@ export class FieldsStore<T extends Item<T>>
      *
      * @param fields - Fields to update as object or array.
      */
-    public updateFields(
+    public updateFields<K extends Item<T>>(
         fields: (RegularField<T> & { key: keyof T })[] | Partial<RegularFields<T>>,
     ): void
     {
@@ -81,10 +107,12 @@ export class FieldsStore<T extends Item<T>>
                 if (!field.key) throw new Error('Field must have a key.')
 
                 const updatedFieldValues =
-                    this.overwriteFieldInPlace(field as ProcessedField<T, keyof T>, this._allFields[field.key])
+                    // @ts-ignore
+                    this.overwriteFieldInPlace(field, this._allFields[field.key])
 
                 if (Object.keys(updatedFieldValues).length <= 1) continue
 
+                // @ts-ignore
                 prevFields[field.key] = { ...this._allFields[field.key], ...updatedFieldValues }
             }
         }
@@ -118,7 +146,7 @@ export class FieldsStore<T extends Item<T>>
      * @param field - Field to update.
      * @param prevField - Previous field.
      */
-    public overwriteFieldInPlace<K extends keyof T>(
+    protected overwriteFieldInPlace<K extends keyof T>(
         field: Partial<RegularField<T>>,
         prevField: ProcessedField<T, K>,
     ): Partial<ProcessedField<T, K>>
@@ -152,7 +180,7 @@ export class FieldsStore<T extends Item<T>>
      *
      * @param fields - Fields to prepare.
      */
-    public prepareFields(fields: RegularFields<T>): ProcessedFields<T>
+    protected prepareFields(fields: RegularFields<T>): ProcessedFields<T>
     {
         const cols: ProcessedFields<T> = {} as ProcessedFields<T>
 

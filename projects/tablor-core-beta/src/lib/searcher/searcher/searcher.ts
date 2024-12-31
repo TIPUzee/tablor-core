@@ -4,7 +4,7 @@ import {
     ItemsAddedPayload, ItemsRemovedPayload, ItemsUpdatedPayload,
     Item,
 } from '../../stores/items-store/interfaces'
-import { FieldsStore } from '../../stores/fields-store/fields-store'
+import { ProcessedField } from '../../stores/fields-store/interfaces'
 import { StringQuerySearcher } from '../string-query-searcher/string-query-searcher'
 import { DateRangeSearcher } from '../date-ranges-searcher/date-range-searcher'
 import { NumberRangesSearcher } from '../numbers-range-searcher/number-ranges-searcher'
@@ -53,23 +53,22 @@ export class Searcher<T extends Item<T>>
 
 
     constructor(
+        protected readonly hasField: (key: keyof T) => boolean,
+        protected readonly getFields: () => ProcessedField<T, keyof T>[],
         protected readonly allItems: AugmentedItem<T>[],
         protected readonly allSearchedItems: ImmutableAugmentedItem<T>[][],
         protected readonly searchResults: ImmutableAugmentedItem<T>[],
-        protected readonly fieldsStore: FieldsStore<T>,
         protected readonly $itemsAdded: Subject<ItemsAddedPayload<T>>,
         protected readonly $itemsRemoved: Subject<ItemsRemovedPayload<T>>,
         protected readonly $itemsUpdated: Subject<ItemsUpdatedPayload<T>>,
     )
     {
-        this.stringQuerySearcher = new StringQuerySearcher(
-            fieldsStore,
-        )
-        this.dateRangesSearcher = new DateRangeSearcher()
-        this.numbersRangesSearcher = new NumberRangesSearcher()
+        this.stringQuerySearcher = new StringQuerySearcher(getFields, hasField)
+        this.dateRangesSearcher = new DateRangeSearcher(hasField)
+        this.numbersRangesSearcher = new NumberRangesSearcher(hasField)
         this.customFnSearcher = new CustomSearcher()
         this.voidSearcher = new VoidSearcher()
-        this.exactValuesSearcher = new ExactValuesSearcher()
+        this.exactValuesSearcher = new ExactValuesSearcher(hasField)
 
         $itemsRemoved.subscribe(this.onItemsRemoved.bind(this))
         $itemsAdded.subscribe(this.onItemsAdded.bind(this))
@@ -208,6 +207,12 @@ export class Searcher<T extends Item<T>>
             searcher.processOptions(options as any) as ProcessedSearchableOptions<T>,
         )
 
+        if (!searcher.checkKeys(processedOptions as any))
+        {
+            console.warn('Invalid options keys', processedOptions)
+            return
+        }
+
         this.performPrevResultsBehavior(processedOptions)
 
         const targetItems = this.getTargetItems(processedOptions)
@@ -250,6 +255,9 @@ export class Searcher<T extends Item<T>>
     }
 
 
+    /**
+     * Creates the new search results.
+     */
     protected makeNewSearchResults(): void
     {
         if (this.allSearchedItems.length === 0)
@@ -273,6 +281,9 @@ export class Searcher<T extends Item<T>>
     }
 
 
+    /**
+     * Triggers when items are removed.
+     */
     protected onItemsRemoved({ removedItems }: ItemsRemovedPayload<T>): void
     {
         const prevSearchResults = this.getItems()
@@ -296,6 +307,9 @@ export class Searcher<T extends Item<T>>
     }
 
 
+    /**
+     * Triggers when items are added.
+     */
     protected onItemsAdded({ addedItems }: ItemsAddedPayload<T>): void
     {
         const prevSearchResults = this.getItems()
@@ -346,6 +360,9 @@ export class Searcher<T extends Item<T>>
     }
 
 
+    /**
+     * Triggers when items are updated.
+     */
     protected onItemsUpdated({ updatedItems }: ItemsUpdatedPayload<T>): void
     {
         if (updatedItems.length === 0) return

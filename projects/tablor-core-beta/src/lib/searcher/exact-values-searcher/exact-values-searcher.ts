@@ -7,6 +7,12 @@ import { ExactValuesOpts, ProcExactValuesOpts } from './interfaces'
  */
 export class ExactValuesSearcher<T extends Item<T>>
 {
+    constructor(
+        protected readonly hasField: (key: keyof T) => boolean,
+    )
+    {}
+
+
     /**
      * Processes string query options.
      */
@@ -27,6 +33,23 @@ export class ExactValuesSearcher<T extends Item<T>>
         }
 
         return p
+    }
+
+
+    /**
+     * Checks if the given options are valid.
+     */
+    checkKeys(options: ProcExactValuesOpts<T>): boolean
+    {
+        for (const field in options.values)
+        {
+            if (!this.hasField(field as keyof T))
+            {
+                return false
+            }
+        }
+
+        return true
     }
 
 

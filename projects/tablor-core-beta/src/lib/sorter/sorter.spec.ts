@@ -39,17 +39,18 @@ describe('Sorter', () =>
         itemsStore = new ItemsStore<SampleItemType>(allItems, fieldsStore)
 
         searcher = new Searcher<SampleItemType>(
+            fieldsStore.hasField.bind(fieldsStore),
+            fieldsStore.getFieldsAsArray.bind(fieldsStore),
             allItems,
             allSearchedItems,
             searchResults,
-            fieldsStore,
             itemsStore.$itemsAdded,
             itemsStore.$itemsRemoved,
             itemsStore.$itemsUpdated,
         )
 
         sorter = new Sorter<SampleItemType>(
-            fieldsStore,
+            fieldsStore.hasField.bind(fieldsStore),
             searchResults,
             searcher.$searchedItemsChanged,
             itemsStore.$itemsAdded,
@@ -470,5 +471,102 @@ describe('Sorter', () =>
                        a[options.field].getTime() < b[options.field].getTime() ? -1 : 1
             },
         })
+    })
+
+    test('should sort a nested sorting option with none-sorted super options', () =>
+    {
+        sorter.sort({
+            field: 'Date',
+            order: 'NONE',
+        })
+
+        sorter.sort({
+            field: 'UserName',
+            order: 'Toggle',
+        })
+
+        sorter.sort({
+            field: 'Amount',
+            order: 'Toggle',
+        })
+
+        expect(searchResults[0].UserName).toBe('Ahmed')
+        expect(searchResults[0].Amount).toBe(1000)
+
+        expect(searchResults[1].UserName).toBe('Ahmed')
+        expect(searchResults[1].Amount).toBe(1500)
+
+        expect(searchResults[10].UserName).toBe('Ahmed')
+        expect(searchResults[10].Amount).toBe(5000)
+
+        expect(searchResults[11].UserName).toBe('Ali')
+        expect(searchResults[11].Amount).toBe(1000)
+
+        expect(searchResults[searchResults.length - 1].UserName).toBe('Zeeshan')
+        expect(searchResults[searchResults.length - 1].Amount).toBe(5000)
+
+        sorter.sort({
+            field: 'Amount',
+            order: 'Toggle',
+        })
+
+        expect(searchResults[0].UserName).toBe('Ahmed')
+        expect(searchResults[0].Amount).toBe(5000)
+
+        expect(searchResults[10].UserName).toBe('Ahmed')
+        expect(searchResults[10].Amount).toBe(1000)
+
+        expect(searchResults[11].UserName).toBe('Ali')
+        expect(searchResults[11].Amount).toBe(5000)
+
+        expect(searchResults[searchResults.length - 1].UserName).toBe('Zeeshan')
+        expect(searchResults[searchResults.length - 1].Amount).toBe(1200)
+
+        sorter.sort({
+            field: 'Date',
+            order: 'ASC',
+        })
+
+        expect(searchResults[0].Date).toEqual(new Date('2024-11-05'))
+        expect(searchResults[1].Date).toEqual(new Date('2024-11-05'))
+        expect(searchResults[3].Date).toEqual(new Date('2024-11-06'))
+        expect(searchResults[4].Date).toEqual(new Date('2024-11-06'))
+        expect(searchResults[8].Date).toEqual(new Date('2024-11-07'))
+        expect(searchResults[9].Date).toEqual(new Date('2024-11-07'))
+        expect(searchResults[searchResults.length - 3].Date).toEqual(new Date('2024-11-12'))
+        expect(searchResults[searchResults.length - 1].Date).toEqual(new Date('2024-11-12'))
+
+        expect(searchResults[0].UserName).toEqual('Ali')
+        expect(searchResults[1].UserName).toEqual('Zeeshan')
+        expect(searchResults[3].UserName).toEqual('Ahmed')
+        expect(searchResults[4].UserName).toEqual('Ahmed')
+        expect(searchResults[4].UserName).toEqual('Ahmed')
+        expect(searchResults[8].UserName).toEqual('Ahmed')
+        expect(searchResults[9].UserName).toEqual('Ahmed')
+        expect(searchResults[searchResults.length - 3].UserName).toEqual('Ali')
+        expect(searchResults[searchResults.length - 1].UserName).toEqual('Zeeshan')
+    })
+
+    test('should sort a nested sorting option with none-sorted super options', () =>
+    {
+        sorter.sort({
+            field: 'UserName',
+            order: 'Toggle',
+            supportedToggleOrders: ['ASC', 'ORIGINAL']
+        })
+
+        expect(searchResults[0].UserName).toBe('Ahmed')
+        expect(searchResults[searchResults.length - 2].UserName).toBe('Zeeshan')
+        expect(searchResults[searchResults.length - 1].UserName).toBe('Zeeshan')
+
+        sorter.sort({
+            field: 'UserName',
+            order: 'Toggle',
+            supportedToggleOrders: ['ASC', 'ORIGINAL']
+        })
+
+        expect(searchResults[0].UserName).toBe('Zeeshan')
+        expect(searchResults[searchResults.length - 2].UserName).toBe('Zeeshan')
+        expect(searchResults[searchResults.length - 1].UserName).toBe('Ahmed')
     })
 })

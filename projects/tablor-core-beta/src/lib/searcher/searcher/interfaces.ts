@@ -1,4 +1,4 @@
-import { StringQueryOpts, ProcStringQueryOpts } from '../string-query-searcher/interfaces'
+import { DraftStringQueryOptions, ProcessedStringQueryOptions } from '../string-query-searcher/interfaces'
 import {
     DateRangesOpts,
     ProcDateRangesOpts,
@@ -192,7 +192,7 @@ export type ProcessedSearchBehavior = {
  *
  * @template T - The base type for the draft search options.
  */
-export type DraftStringQuerySearchOptions<T> = SearchBehavior & StringQueryOpts<T>
+export type DraftStringQuerySearchOptions<T> = SearchBehavior & DraftStringQueryOptions<T>
 
 /**
  * Represents options for a processed search with string query functionality.
@@ -200,7 +200,7 @@ export type DraftStringQuerySearchOptions<T> = SearchBehavior & StringQueryOpts<
  *
  * @template T - The base type for the processed search options.
  */
-export type ProcessedStringQuerySearchOptions<T> = ProcessedSearchBehavior & ProcStringQueryOpts<T> & {
+export type ProcessedStringQuerySearchOptions<T> = ProcessedSearchBehavior & ProcessedStringQueryOptions<T> & {
     by: 'StringQuery';
 }
 
