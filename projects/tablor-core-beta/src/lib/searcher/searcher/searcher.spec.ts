@@ -213,14 +213,14 @@ describe('Searcher Class Tests', () =>
     test('Search by query, type of date (searching types include Date)', () =>
     {
         searcher.searchByStringQuery({
-            query: '2019-11-01',
+            query: '2021-05-17',
             convertToString: {
                 date: d => d.toISOString(),
             },
         })
 
         expect(searcher.getItems()).toEqual([
-            // query searching in date fields is not implemented
+            expect.objectContaining(SampleItems[2]),
         ])
     })
 

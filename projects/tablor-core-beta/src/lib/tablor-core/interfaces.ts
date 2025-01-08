@@ -29,7 +29,6 @@ import {
     ItemsSortedPayload,
     SortedItemsChangedPayload,
     ImmutableProcessedSortingOption,
-    InsertBehavior,
     DraftSortingOptions,
     ProcessedSortingOptions,
 } from '../sorter/interfaces'
@@ -71,7 +70,8 @@ import {
  *
  * A comprehensive type definition that aggregates all public types provided by the TablorCore library.
  *
- * This type serves as a single entry point for accessing various types used throughout the library, making it easier for developers to manage their imports and avoid code clutter.
+ * This type serves as a single entry point for accessing various types used throughout the library,
+ * making it easier for developers to manage their imports and avoid code clutter.
  *
  * ---
  *
@@ -151,7 +151,6 @@ export type TablorCoreTypes<T extends Item<T>, K extends keyof T = keyof T> = {
     ItemsSortedPayload: ItemsSortedPayload<T>,
     SortedItemsChangedPayload: SortedItemsChangedPayload<T>,
     ImmutableProcessedSortingOption: ImmutableProcessedSortingOption<T, K>,
-    InsertBehavior: InsertBehavior<T, K>,
     DraftSortingOption: DraftSortingOptions<T, K>,
     ProcessedSortingOption: ProcessedSortingOptions<T, K>,
 

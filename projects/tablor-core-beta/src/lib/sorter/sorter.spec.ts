@@ -552,7 +552,7 @@ describe('Sorter', () =>
         sorter.sort({
             field: 'UserName',
             order: 'Toggle',
-            supportedToggleOrders: ['ASC', 'ORIGINAL']
+            supportedToggleOrders: ['ASC', 'ORIGINAL'],
         })
 
         expect(searchResults[0].UserName).toBe('Ahmed')
@@ -562,11 +562,167 @@ describe('Sorter', () =>
         sorter.sort({
             field: 'UserName',
             order: 'Toggle',
-            supportedToggleOrders: ['ASC', 'ORIGINAL']
+            supportedToggleOrders: ['ASC', 'ORIGINAL'],
         })
 
         expect(searchResults[0].UserName).toBe('Zeeshan')
         expect(searchResults[searchResults.length - 2].UserName).toBe('Zeeshan')
         expect(searchResults[searchResults.length - 1].UserName).toBe('Ahmed')
+    })
+
+    test('should sort a nested sorting option up to six levels', () =>
+    {
+        // Level 1 - ASC
+        sorter.sort({
+            field: 'UserName',
+            order: 'Toggle',
+        })
+
+        // Level 2 - ASC DESC
+        sorter.sort({
+            field: 'Amount',
+            order: 'Toggle',
+        })
+
+        sorter.sort({
+            field: 'Amount',
+            order: 'Toggle',
+        })
+
+        // Level 3 - ASC
+        sorter.sort({
+            field: 'Date',
+            order: 'Toggle',
+        })
+
+        // Level 4 - ASC
+        sorter.sort({
+            field: 'Status',
+            order: 'Toggle',
+        })
+
+        // Level 5 - ASC
+        sorter.sort({
+            field: 'TransactionID',
+            order: 'Toggle',
+        })
+
+        // Level 6 - ASC
+        sorter.sort({
+            field: 'TransactionType',
+            order: 'Toggle',
+        })
+
+        // Level 1 - DESC
+        sorter.sort({
+            field: 'UserName',
+            order: 'Toggle',
+        })
+
+        // Level 2 - NONE
+        sorter.sort({
+            field: 'Amount',
+            order: 'Toggle',
+        })
+
+        // Level 3 - DESC
+        sorter.sort({
+            field: 'Date',
+            order: 'Toggle',
+        })
+
+        // Level 4 - DESC
+        sorter.sort({
+            field: 'Status',
+            order: 'Toggle',
+        })
+
+        // Level 5 - DESC
+        sorter.sort({
+            field: 'TransactionID',
+            order: 'Toggle',
+        })
+
+        // Level 6 - DESC
+        sorter.sort({
+            field: 'TransactionType',
+            order: 'Toggle',
+        })
+
+        // Level 1 - NONE
+        sorter.sort({
+            field: 'UserName',
+            order: 'Toggle',
+        })
+
+        // Level 3 - NONE
+        sorter.sort({
+            field: 'Date',
+            order: 'Toggle',
+        })
+
+        // Level 4 - NONE
+        sorter.sort({
+            field: 'Status',
+            order: 'Toggle',
+        })
+
+        // Level 5 - NONE
+        sorter.sort({
+            field: 'TransactionID',
+            order: 'Toggle',
+        })
+
+        // Level 6 - NONE
+        sorter.sort({
+            field: 'TransactionType',
+            order: 'Toggle',
+        })
+
+        // Level 5 - ASC
+        sorter.sort({
+            field: 'TransactionID',
+            order: 'Toggle',
+        })
+
+        expect(sorter.getOptions()).toEqual([
+            expect.objectContaining({ order: 'NONE', field: 'UserName' }),
+            expect.objectContaining({ order: 'NONE', field: 'Amount' }),
+            expect.objectContaining({ order: 'NONE', field: 'Date' }),
+            expect.objectContaining({ order: 'NONE', field: 'Status' }),
+            expect.objectContaining({ order: 'ASC', field: 'TransactionID' }),
+            expect.objectContaining({ order: 'NONE', field: 'TransactionType' }),
+        ])
+
+        expect(searchResults[0].TransactionID).toBe(1)
+        expect(searchResults[1].TransactionID).toBe(2)
+        expect(searchResults[2].TransactionID).toBe(3)
+        expect(searchResults[searchResults.length - 1].TransactionID).toBe(40)
+
+        // Level 5 - DESC
+        sorter.sort({
+            field: 'TransactionID',
+            order: 'Toggle',
+        })
+
+        // Level 5 - NONE
+        sorter.sort({
+            field: 'TransactionID',
+            order: 'Toggle',
+        })
+
+        // Level 1 - ASC
+        sorter.sort({
+            field: 'UserName',
+            order: 'Toggle',
+        })
+
+        expect(searchResults[0].UserName).toBe('Ahmed')
+        expect(searchResults[1].UserName).toBe('Ahmed')
+        expect(searchResults[2].UserName).toBe('Ahmed')
+        expect(searchResults[3].UserName).toBe('Ahmed')
+        expect(searchResults[searchResults.length - 3].UserName).toBe('Zeeshan')
+        expect(searchResults[searchResults.length - 2].UserName).toBe('Zeeshan')
+        expect(searchResults[searchResults.length - 1].UserName).toBe('Zeeshan')
     })
 })

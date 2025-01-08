@@ -25,24 +25,6 @@ export type DraftStringQueryFieldIncludeOptions<T extends Item<T>> =
      * An array of fields to exclude from search.
      */
     excludeFields?: never[];
-
-    /**
-     * Whether the words in the query must be matched in the same order as they appear in the query.
-     *
-     * @remarks
-     * This option enforces to look all words in a `single field` in the same order as they appear in the query.
-     * - This option is compatible with the only one field to search in.
-     */
-    wordsInOrder?: false;
-
-    /**
-     * Whether the words in the query must be matched in a consecutive manner as they appear in the query.
-     *
-     * @remarks
-     * This option enforces to look all words in a `single field` in a consecutive manner as they appear in the query.
-     * - This option is compatible with the only one field to search in.
-     */
-    consecutiveWords?: false;
 }
     | {
     /**
@@ -54,88 +36,6 @@ export type DraftStringQueryFieldIncludeOptions<T extends Item<T>> =
      * An array of fields to exclude from search.
      */
     excludeFields: (keyof T)[];
-
-    /**
-     * Whether the words in the query must be matched in the same order as they appear in the query.
-     *
-     * @remarks
-     * This option enforces to look all words in a `single field` in the same order as they appear in the query.
-     * - This option is compatible with the only one field to search in.
-     */
-    wordsInOrder?: false;
-
-    /**
-     * Whether the words in the query must be matched in a consecutive manner as they appear in the query.
-     *
-     * @remarks
-     * This option enforces to look all words in a `single field` in a consecutive manner as they appear in the query.
-     * - This option is compatible with the only one field to search in.
-     */
-    consecutiveWords?: false;
-}
-    | {
-    /**
-     * An array of fields to exclude from search.
-     *
-     * @remarks
-     * Provide only one field to search in if you are using the `wordsInOrder` option.
-     */
-    includeFields: [keyof T];
-
-    /**
-     * An array of fields to exclude from search.
-     */
-    excludeFields?: never[];
-
-    /**
-     * Whether the words in the query must be matched in the same order as they appear in the query.
-     *
-     * @remarks
-     * This option enforces to look all words in a `single field` in the same order as they appear in the query.
-     * - This option is compatible with the only one field to search in.
-     */
-    wordsInOrder: true;
-
-    /**
-     * Whether the words in the query must be matched in a consecutive manner as they appear in the query.
-     *
-     * @remarks
-     * This option enforces to look all words in a `single field` in a consecutive manner as they appear in the query.
-     * - This option is compatible with the only one field to search in.
-     */
-    consecutiveWords?: boolean;
-}
-    | {
-    /**
-     * An array of fields to exclude from search.
-     *
-     * @remarks
-     * Provide only one field to search in if you are using the `wordsInOrder` option.
-     */
-    includeFields: [keyof T];
-
-    /**
-     * An array of fields to exclude from search.
-     */
-    excludeFields?: never[];
-
-    /**
-     * Whether the words in the query must be matched in the same order as they appear in the query.
-     *
-     * @remarks
-     * This option enforces to look all words in a `single field` in the same order as they appear in the query.
-     * - This option is compatible with the only one field to search in.
-     */
-    wordsInOrder?: boolean;
-
-    /**
-     * Whether the words in the query must be matched in a consecutive manner as they appear in the query.
-     *
-     * @remarks
-     * This option enforces to look all words in a `single field` in a consecutive manner as they appear in the query.
-     * - This option is compatible with the only one field to search in.
-     */
-    consecutiveWords: true;
 }
 
 /**
@@ -146,6 +46,16 @@ export type DraftStringQueryOptions<T extends Item<T>> = DraftStringQueryFieldIn
      * A query string. (Default: "")
      */
     query: string;
+
+    /**
+     * Whether the words in the query must be matched in the same order as they appear in the query.
+     */
+    wordsInOrder?: boolean;
+
+    /**
+     * Whether the words in the query must be matched in a consecutive manner as they appear in the query.
+     */
+    consecutiveWords?: boolean;
 
     /**
      * A strategy to match a word in a query string with a word in an item. (Default: "ExactMatch")
@@ -209,64 +119,14 @@ export type DraftStringQueryOptions<T extends Item<T>> = DraftStringQueryFieldIn
 }
 
 /**
- * Processed fields to include in the search.
+ * Processed options a string query.
  */
-export type ProcessedStringQueryFieldIncludeOptions<T extends Item<T>> =
-    | {
+export type ProcessedStringQueryOptions<T extends Item<T>> = {
     /**
-     * An array of fields to exclude from search.
+     * An array of fields to include for search.
      */
     includeFields: (keyof T)[];
 
-    /**
-     * Whether the words in the query must be matched in the same order as they appear in the query.
-     *
-     * @remarks
-     * This option enforces to look all words in a `single field` in the same order as they appear in the query.
-     * - This option is compatible with the only one field to search in.
-     */
-    wordsInOrder: false;
-
-    /**
-     * Whether the words in the query must be matched in a consecutive manner as they appear in the query.
-     *
-     * @remarks
-     * This option enforces to look all words in a `single field` in a consecutive manner as they appear in the query.
-     * - This option is compatible with the only one field to search in.
-     */
-    consecutiveWords: false;
-}
-    | {
-    /**
-     * An array of fields to exclude from search.
-     *
-     * @remarks
-     * Provide only one field to search in if you are using the `wordsInOrder` option.
-     */
-    includeFields: [keyof T];
-
-    /**
-     * Whether the words in the query must be matched in the same order as they appear in the query.
-     *
-     * @remarks
-     * This option enforces to look all words in a `single field` in the same order as they appear in the query.
-     * - This option is compatible with the only one field to search in.
-     */
-    wordsInOrder: boolean;
-
-    /**
-     * Whether the words in the query must be matched in a consecutive manner as they appear in the query.
-     *
-     * @remarks
-     * This option enforces to look all words in a `single field` in a consecutive manner as they appear in the query.
-     * - This option is compatible with the only one field to search in.
-     */
-    consecutiveWords: boolean;
-}
-/**
- * Processed options a string query.
- */
-export type ProcessedStringQueryOptions<T extends Item<T>> = ProcessedStringQueryFieldIncludeOptions<T> & {
     /**
      * A query string.
      */
@@ -276,6 +136,16 @@ export type ProcessedStringQueryOptions<T extends Item<T>> = ProcessedStringQuer
      * An array of fields to search in.
      */
     words: string[];
+
+    /**
+     * Whether the words in the query must be matched in the same order as they appear in the query.
+     */
+    wordsInOrder: boolean;
+
+    /**
+     * Whether the words in the query must be matched in a consecutive manner as they appear in the query.
+     */
+    consecutiveWords: boolean;
 
     /**
      * A strategy to match a word in a query string with a word in an item.

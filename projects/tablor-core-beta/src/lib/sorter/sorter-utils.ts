@@ -57,13 +57,13 @@ export function defaultCompareFn<T extends Item<T>, K extends keyof T>(
             let strA: string = a
             let strB: string = b
 
-            if (stringOptions.ignoreWhitespacesIfString)
+            if (stringOptions.ignoreWhitespaces)
             {
                 strA = strA.trim()
                 strB = strB.trim()
             }
 
-            if (!stringOptions.isCaseSensitiveIfString)
+            if (!stringOptions.caseSensitive)
             {
                 strA = strA.toLowerCase()
                 strB = strB.toLowerCase()
@@ -79,7 +79,7 @@ export function defaultCompareFn<T extends Item<T>, K extends keyof T>(
             let numA: number = a
             let numB: number = b
 
-            if (numberOptions.ignoreDecimalsIfNumber)
+            if (numberOptions.ignoreDecimals)
             {
                 numA = Math.trunc(numA)
                 numB = Math.trunc(numB)

@@ -40,9 +40,9 @@ export class StringQuerySearcher<T extends Item<T>>
 
             includeFields: includeFields,
 
-            wordsInOrder: false,
+            wordsInOrder: options.wordsInOrder === undefined ? false : options.wordsInOrder,
 
-            consecutiveWords: false,
+            consecutiveWords: options.consecutiveWords === undefined ? false : options.consecutiveWords,
 
             singleWordMatchCriteria: options.singleWordMatchCriteria !== undefined ?
                                      options.singleWordMatchCriteria :
@@ -64,30 +64,6 @@ export class StringQuerySearcher<T extends Item<T>>
             wordSeparators: options.wordSeparators === undefined ? [' '] : options.wordSeparators,
 
             isCaseSensitive: options.isCaseSensitive === undefined ? false : options.isCaseSensitive,
-        }
-
-        if (options.wordsInOrder)
-        {
-            if (newOptions.includeFields.length !== 1)
-            {
-                console.warn('Words in order can only be used with a single field', options)
-                throw new Error('Words in order can only be used with a single field')
-            }
-
-            // @ts-ignore
-            newOptions.wordsInOrder = true
-        }
-
-        if (options.consecutiveWords)
-        {
-            if (newOptions.includeFields.length !== 1)
-            {
-                console.warn('Consecutive words can only be used with a single field', options)
-                throw new Error('Consecutive words can only be used with a single field')
-            }
-
-            // @ts-ignore
-            newOptions.consecutiveWords = true
         }
 
         if (options.convertToString)
@@ -173,17 +149,19 @@ export class StringQuerySearcher<T extends Item<T>>
 
         items.forEach((item) =>
         {
-            const itemWords: string[] = []
+            const itemWords: string[][] = []
 
             for (const field of options.includeFields)
             {
                 if (field === 'tablorMeta')
                     throw new Error('Cannot search by tablorMeta field')
 
-                const valueType: string = typeof item[field]
+                const valueType: string =
+                    item[field] as any instanceof Date ? 'date' :
+                    item[field] === null ? 'null' : typeof item[field]
 
                 // @ts-ignore
-                if (!options.convertToString[valueType])
+                if (options.convertToString[valueType] === undefined)
                     continue
 
                 // @ts-ignore
@@ -194,10 +172,7 @@ export class StringQuerySearcher<T extends Item<T>>
                 if (valueWords.length === 0)
                     continue
 
-                if (itemWords.length > 0)
-                    itemWords.push('')
-
-                itemWords.push(...valueWords)
+                itemWords.push(valueWords)
             }
 
             if (itemWords.length === 0)
@@ -276,7 +251,7 @@ export class StringQuerySearcher<T extends Item<T>>
     protected genPhrasesMatcherFn(
         wordsMatcherFn: (subWord: string, word: string) => boolean,
         options: ProcessedStringQueryOptions<T>,
-    ): (searchWords: string[], itemWords: string[]) => boolean
+    ): (searchWords: string[], itemWords: string[][]) => boolean
     {
         if (options.requireAllWords)
         {
@@ -287,22 +262,34 @@ export class StringQuerySearcher<T extends Item<T>>
                     return (sw, iw) =>
                     {
                         // start with
-                        // iw: Fill Full Screen With Gray Color
+                        // iw: [ [ Fill Full Screen With Gray Color ], [ Command Set Ok Color ] ]
                         // sw: f s wi: true
                         // sw: f s g: false
+                        // sw: g c c: false
+                        // sw: g c o: true
 
-                        for (let i = 0; i <= iw.length - sw.length; i++)
+                        for (let itemFieldWords of iw)
                         {
-                            let match = true
-                            for (let j = 0; j < sw.length; j++)
+                            for (
+                                let fieldWordIndex = 0;
+                                fieldWordIndex <= itemFieldWords.length - sw.length;
+                                fieldWordIndex++
+                            )
                             {
-                                if (!wordsMatcherFn(sw[j], iw[i + j]))
+                                let match = true
+                                for (let searchWordIndex = 0; searchWordIndex < sw.length; searchWordIndex++)
                                 {
-                                    match = false
-                                    break
+                                    if (!wordsMatcherFn(
+                                        sw[searchWordIndex],
+                                        itemFieldWords[fieldWordIndex + searchWordIndex],
+                                    ))
+                                    {
+                                        match = false
+                                        break
+                                    }
                                 }
+                                if (match) return true
                             }
-                            if (match) return true
                         }
                         return false
                     }
@@ -312,26 +299,38 @@ export class StringQuerySearcher<T extends Item<T>>
                     return (sw, iw) =>
                     {
                         // start with
-                        // iw: Fill Full Screen With Gray Color
+                        // iw: [ [ Fill Full Screen With Gray Color ], [ Command Set Ok Color ] ]
                         // sw: f s wi: true
                         // sw: f s g: true
+                        // sw: g c c: false
+                        // sw: g c o: false
 
-                        let currentIndex = 0
-                        for (let i = 0; i < sw.length; i++)
+                        for (let itemFieldWords of iw)
                         {
-                            let found = false
-                            for (let j = currentIndex; j < iw.length; j++)
+                            let currentIndex = 0
+                            let isMatched = true
+
+                            for (let i = 0; i < sw.length; i++)
                             {
-                                if (wordsMatcherFn(sw[i], iw[j]))
+                                let found = false
+                                for (let j = currentIndex; j < itemFieldWords.length; j++)
                                 {
-                                    found = true
-                                    currentIndex = j + 1
+                                    if (wordsMatcherFn(sw[i], itemFieldWords[j]))
+                                    {
+                                        found = true
+                                        currentIndex = j + 1
+                                        break
+                                    }
+                                }
+                                if (!found)
+                                {
+                                    isMatched = false
                                     break
                                 }
                             }
-                            if (!found) return false
+                            if (isMatched) return true
                         }
-                        return true
+                        return false
                     }
                 }
             }
@@ -364,17 +363,22 @@ export class StringQuerySearcher<T extends Item<T>>
                     return (sw, iw) =>
                     {
                         // start with
-                        // iw: Fill Full Screen With Gray Color
+                        // iw: [ [ Fill Full Screen With Gray Color ], [ Command Set Ok Color ] ]
                         // sw: wi f s: true
                         // sw: g f s: false
+                        // sw: c c s: false
+                        // sw: s c o: true
 
-                        for (let i = 0; i <= iw.length - sw.length; i++)
+                        for (let itemFieldWords of iw)
                         {
-                            const slice = iw.slice(i, i + sw.length)
-
-                            if (isPermutationMatch(sw, slice, wordsMatcherFn))
+                            for (let i = 0; i <= itemFieldWords.length - sw.length; i++)
                             {
-                                return true
+                                const slice = itemFieldWords.slice(i, i + sw.length)
+
+                                if (isPermutationMatch(sw, slice, wordsMatcherFn))
+                                {
+                                    return true
+                                }
                             }
                         }
                         return false
@@ -385,11 +389,11 @@ export class StringQuerySearcher<T extends Item<T>>
                     return (sw, iw) =>
                     {
                         // start with
-                        // iw: Fill Full Screen With Gray Color
+                        // iw: [ [ Fill Full Screen With Gray Color ], [ Command Set Ok Color ] ]
                         // sw: s c wi: true
                         // sw: s f g: true
 
-                        return sw.every((word) => iw.some((itemWord) => wordsMatcherFn(word, itemWord)))
+                        return sw.every((word) => iw.flat().some((itemWord) => wordsMatcherFn(word, itemWord)))
                     }
                 }
             }
@@ -399,11 +403,12 @@ export class StringQuerySearcher<T extends Item<T>>
             return (sw, iw) =>
             {
                 // start with
-                // iw: Fill Full Screen With Gray Color
-                // sw: s: true
-                // sw: a: false
+                // iw: [ [ Fill Full Screen With Gray Color ], [ Command Set Ok Color ] ]
+                // sw: s a t: true
+                // sw: a l l: false
+                // sw: o m m: true
 
-                return sw.some((word) => iw.some((itemWord) => wordsMatcherFn(word, itemWord)))
+                return sw.some((word) => iw.flat().some((itemWord) => wordsMatcherFn(word, itemWord)))
             }
         }
     }

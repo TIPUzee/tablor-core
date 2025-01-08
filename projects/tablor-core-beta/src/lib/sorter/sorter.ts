@@ -9,14 +9,15 @@ import { Subject } from 'rxjs'
 import {
     DraftSortingOptions,
     ImmutableProcessedSortingOption,
-    InsertBehavior, ItemsSortedPayload,
+    ItemsSortedPayload,
     ProcessedSortingOptions,
-    ProcessedSortingOptionsWithMeta, SortedItemsChangedPayload,
+    SortedItemsChangedPayload,
     SortingOptionsChangedPayload,
     SortRange,
 } from './interfaces'
 import { SearchedItemsChangedPayload } from '../searcher/searcher/interfaces'
 import { defaultCompareFn } from './sorter-utils'
+import { areEqualArrays, resolveIndex } from '../utils/utility-fns'
 
 
 /**
@@ -91,9 +92,7 @@ export class Sorter<T extends Item<T>>
     {
         if (typeof indexOrKey === 'number')
         {
-            indexOrKey = indexOrKey % this._options.length
-            indexOrKey = indexOrKey < 0 ? this._options.length + indexOrKey : indexOrKey
-            return this._options[indexOrKey].order
+            return this._options[resolveIndex(indexOrKey, this._options.length)].order
         }
 
         return this._options.find(o => o.field === indexOrKey)?.order
@@ -165,13 +164,13 @@ export class Sorter<T extends Item<T>>
         const prevOptions = [...this.getOptions(true)]
         const prevSortedItems = [...this.searchResults]
 
-        const processedOptions = this.processOptionsWithMeta(options)
+        const processedOptions = this.processOptions(options)
 
-        const optionsIndex = this.addNewOptions(processedOptions)
+        this.addNewOptions(processedOptions)
 
-        for (let currOptionsIndex = optionsIndex; currOptionsIndex < this.getOptions(true).length; currOptionsIndex++)
+        for (let i = processedOptions.insertBehavior.insertAt; i < this.getOptions(true).length; i++)
         {
-            this.sortItems(currOptionsIndex)
+            this.sortItems(i)
         }
 
         this.$sortingOptionsChanged.next({
@@ -184,28 +183,29 @@ export class Sorter<T extends Item<T>>
             prevItems: prevSortedItems,
         })
 
-        this.$sortedItemsChanged.next({
-            items: this.searchResults,
-            prevItems: prevSortedItems,
-        })
+        if (!areEqualArrays(this.searchResults, prevSortedItems))
+            this.$sortedItemsChanged.next({
+                items: this.searchResults,
+                prevItems: prevSortedItems,
+            })
     }
 
 
     /**
      * Sorts the items based on the current sorting options.
      */
-    protected sortItems<K extends keyof T>(optionsIndex: number): void
+    protected sortItems(optionsIndex: number): void
     {
         this._sortingRanges.splice(optionsIndex, this._sortingRanges.length)
 
-        const currOptions: ImmutableProcessedSortingOption<T, K> = this.getOptions(true)[optionsIndex] as any
+        const currOptions = this.getOptions(true)[optionsIndex]
 
-        const currCompareFn: ProcessedSortingOptions<T, K>['customCompareFn'] =
+        const currCompareFn: ProcessedSortingOptions<T, keyof T>['customCompareFn'] =
             currOptions.order === 'ORIGINAL' || currOptions.order === 'NONE' ?
             (a, b) => (a.tablorMeta.uuid - b.tablorMeta.uuid) * -1 :
             currOptions.customCompareFn
 
-        const currCompareFnForNestedMatch: ProcessedSortingOptions<T, K>['customCompareFnForNestedMatch'] =
+        const currCompareFnForNestedMatch: ProcessedSortingOptions<T, keyof T>['customCompareFnForNestedMatch'] =
             currOptions.order === 'ORIGINAL' ?
             (a, b) => (a.tablorMeta.uuid - b.tablorMeta.uuid) * -1 :
             currOptions.order === 'NONE' ?
@@ -227,7 +227,7 @@ export class Sorter<T extends Item<T>>
                 this.makeSortingRangesForNestedSortingOptions(
                     this.searchResults,
                     currCompareFnForNestedMatch,
-                    currOptions,
+                    optionsIndex,
                 ),
             )
         }
@@ -249,7 +249,7 @@ export class Sorter<T extends Item<T>>
                 this.makeSortingRangesForNestedSortingOptions(
                     this.searchResults,
                     currCompareFnForNestedMatch,
-                    currOptions,
+                    optionsIndex,
                 ),
             )
         }
@@ -259,19 +259,18 @@ export class Sorter<T extends Item<T>>
     /**
      * Creates sorting ranges for nested sorting options.
      */
-    protected makeSortingRangesForNestedSortingOptions<K extends keyof T>(
+    protected makeSortingRangesForNestedSortingOptions(
         items: ImmutableAugmentedItem<T>[],
-        currCompareFnForNestedMatch: ProcessedSortingOptions<T, K>['customCompareFnForNestedMatch'],
-        currOptions: ImmutableProcessedSortingOption<T, K>,
-        currOptionsIndex: number = 0,
+        currCompareFnForNestedMatch: ProcessedSortingOptions<T, keyof T>['customCompareFnForNestedMatch'],
+        optionsIndex: number = 0,
     ): SortRange[]
     {
         const sortingRanges: SortRange[] = []
 
         const superRanges: SortRange[] =
-            currOptionsIndex === 0 ?
+            optionsIndex === 0 ?
                 [{ start: 0, end: this.searchResults.length }] :
-            this._sortingRanges[currOptionsIndex - 1]
+            this._sortingRanges[optionsIndex - 1]
 
         for (let range of superRanges)
         {
@@ -281,7 +280,7 @@ export class Sorter<T extends Item<T>>
                 const areSame = currCompareFnForNestedMatch(
                     items[start],
                     items[i],
-                    currOptions,
+                    this._options[optionsIndex],
                 ) === 0
 
                 if (i === range.end - 1)
@@ -334,88 +333,54 @@ export class Sorter<T extends Item<T>>
 
 
     /**
-     * Transforms the given draft options into processed options with meta-data.
+     * Transform\\\\s the given draft options into processed options with meta-data.
      */
-    protected processOptionsWithMeta<K extends keyof T>(options: DraftSortingOptions<T, K>): ProcessedSortingOptionsWithMeta<T, K>
+    protected processOptions<K extends keyof T>(options: DraftSortingOptions<T, K>):
+        ProcessedSortingOptions<T, K>
     {
-        const optionsPrevIndex = this.getOptions().findIndex(
-            option => option.field === options.field,
+        let insertBehavior: ProcessedSortingOptions<T, K>['insertBehavior'] = {
+            insertAt: !options.insertBehavior && !options.clear ?
+                      this._options.findIndex(o => o.field === options.field) : this._options.length,
+        }
+
+        if (options.insertBehavior)
+        {
+            if (typeof options.insertBehavior.insertAt === 'string')
+                insertBehavior.insertAt = this._options.findIndex(o => o.field === insertBehavior.insertAt)
+            else if (typeof options.insertBehavior.insertAt === 'number')
+                insertBehavior.insertAt = options.insertBehavior.insertAt
+        }
+        insertBehavior.insertAt = resolveIndex(
+            insertBehavior.insertAt,
+            this._options.length + 1,
         )
 
-        const prevOptions: ProcessedSortingOptions<T, K> | undefined = this._options[optionsPrevIndex] as any
-
-        let newOrder: ProcessedSortingOptions<T, K>['order'] | number
-
-        let newSupportedToggleOrders: ProcessedSortingOptions<T, K>['supportedToggleOrders'] = []
-
-        if (options.order === 'Toggle')
-        {
-            newSupportedToggleOrders =
-                options.supportedToggleOrders !== undefined ?
-                options.supportedToggleOrders : ['ASC', 'DESC', 'NONE']
-
-            if (options.toggleOrderIndex !== undefined)
-            {
-                if (options.toggleOrderIndex >= newSupportedToggleOrders.length || options.toggleOrderIndex < 0)
-                    throw new Error('Toggle order index is out of range.')
-
-                newOrder = options.toggleOrderIndex
-            }
-
-            else if (prevOptions === undefined)
-                newOrder = 0
-
-            else
-            {
-                if (prevOptions.supportedToggleOrders === undefined)
-                    newOrder = newSupportedToggleOrders.indexOf(prevOptions.order) + 1
-                else
-                    newOrder = prevOptions.supportedToggleOrders.indexOf(prevOptions.order) + 1
-            }
-        }
-        else
-        {
-            newOrder = options.order
-        }
-
-        if (typeof newOrder === 'number')
-        {
-            newOrder = newOrder % newSupportedToggleOrders.length
-            newOrder = newOrder < 0 ? newOrder + newSupportedToggleOrders.length : newOrder
-        }
-
-        const newOptions: ProcessedSortingOptionsWithMeta<T, K> = {
+        const processedOptions: ProcessedSortingOptions<T, K> = {
             field: options.field,
 
-            order: typeof newOrder === 'number' ? newSupportedToggleOrders[newOrder] : (newOrder),
-
             stringOptions: {
-                isCaseSensitiveIfString:
-                    options.stringOptions?.isCaseSensitiveIfString !== undefined ?
-                    options.stringOptions.isCaseSensitiveIfString :
-                    false,
+                caseSensitive:
+                    options.stringOptions?.caseSensitive !== undefined ?
+                    options.stringOptions.caseSensitive : false,
 
-                ignoreWhitespacesIfString:
-                    options.stringOptions?.ignoreWhitespacesIfString !== undefined ?
-                    options.stringOptions.ignoreWhitespacesIfString :
-                    true,
+                ignoreWhitespaces:
+                    options.stringOptions?.ignoreWhitespaces !== undefined ?
+                    options.stringOptions.ignoreWhitespaces : true,
             },
 
             numberOptions: {
-                ignoreDecimalsIfNumber:
-                    options.numberOptions?.ignoreDecimalsIfNumber !== undefined ?
-                    options.numberOptions.ignoreDecimalsIfNumber : false,
+                ignoreDecimals:
+                    options.numberOptions?.ignoreDecimals !== undefined ?
+                    options.numberOptions.ignoreDecimals : false,
             },
 
             customCompareFn:
-                options.customCompareFn === undefined ? defaultCompareFn : options.customCompareFn,
+                options.customCompareFn === undefined ?
+                defaultCompareFn : options.customCompareFn,
 
             customCompareFnForNestedMatch:
-                options.customCompareFnForNestedMatch === undefined ? (...args: any) =>
-                {
-                    // @ts-ignore
-                    return defaultCompareFn(...args)
-                } : options.customCompareFnForNestedMatch,
+                options.customCompareFnForNestedMatch === undefined ?
+                defaultCompareFn : options.customCompareFnForNestedMatch,
 
             prioritizeNulls:
                 options.prioritizeNulls !== undefined ? options.prioritizeNulls : 'FirstOnASC',
@@ -423,152 +388,109 @@ export class Sorter<T extends Item<T>>
             prioritizeUndefineds:
                 options.prioritizeUndefineds !== undefined ? options.prioritizeUndefineds : 'FirstOnASC',
 
-            insertBehavior:
-                options.insertBehavior !== undefined ?
-                options.insertBehavior : {
-                        strategy: 'PresetPosition',
-                        target: 'SameType',
-                        action: 'Replace',
-                        notFoundBehavior: {
-                            strategy: 'PresetPosition',
-                            action: 'Push',
-                            target: 'End',
-                        },
-                    },
+            insertBehavior: insertBehavior,
 
-            clear: {
-                target:
-                    options.clear?.target !== undefined ? options.clear.target : undefined,
-            },
+            clear:
+                options.clear ? options.clear : { target: 'InsertPosition' },
+
+            order: options.order as any,
+
+            supportedToggleOrders: undefined as any,
+
+            toggleOrderIndex: undefined as any,
         }
 
-        if (typeof newOrder === 'number')
-        {
-            // @ts-ignore
-            (newOptions as any).supportedToggleOrders = newSupportedToggleOrders;
+        const replacingOptions = this._options[processedOptions.insertBehavior.insertAt]
 
-            // @ts-ignore
-            (newOptions as any).toggleOrderIndex = newOrder
+        if (options.order === 'Toggle')
+        {
+            if (options.supportedToggleOrders)
+                processedOptions.supportedToggleOrders = options.supportedToggleOrders
+            else
+                processedOptions.supportedToggleOrders = ['ASC', 'DESC', 'NONE']
+
+            if (options.toggleOrderIndex)
+                processedOptions.toggleOrderIndex = options.toggleOrderIndex
+            else
+            {
+
+                if (!replacingOptions)
+                    processedOptions.toggleOrderIndex = 0
+                else if (
+                    replacingOptions.supportedToggleOrders &&
+                    replacingOptions.field === processedOptions.field
+                )
+                {
+                    processedOptions.toggleOrderIndex = replacingOptions.toggleOrderIndex + 1
+                }
+                else
+                    processedOptions.toggleOrderIndex = 0
+            }
+
+            processedOptions.toggleOrderIndex = resolveIndex(
+                processedOptions.toggleOrderIndex,
+                processedOptions.supportedToggleOrders.length,
+            )
+            processedOptions.order = processedOptions.supportedToggleOrders[processedOptions.toggleOrderIndex]
         }
 
         if (options.processingCallback)
             options.processingCallback(
-                newOptions,
-                this.getOptions()[optionsPrevIndex] as any,
-                this.getOptions(),
+                processedOptions,
+                replacingOptions,
+                this.getOptions(true),
             )
 
-        return newOptions
-    }
-
-
-    /**
-     * Removes the meta-data from the given options.
-     */
-    protected removeMeta<K extends keyof T>(options: ProcessedSortingOptionsWithMeta<T, K>): ProcessedSortingOptions<T, K>
-    {
-        const newOptions = {
-            field: options.field,
-            order: options.order,
-            stringOptions: options.stringOptions,
-            numberOptions: options.numberOptions,
-            customCompareFn: options.customCompareFn,
-            customCompareFnForNestedMatch: options.customCompareFnForNestedMatch,
-            prioritizeNulls: options.prioritizeNulls,
-            prioritizeUndefineds: options.prioritizeUndefineds,
-        }
-
-        if (options.supportedToggleOrders)
-        {
-            // @ts-ignore
-            newOptions.supportedToggleOrders = options.supportedToggleOrders
-            // @ts-ignore
-            newOptions.toggleOrderIndex = options.toggleOrderIndex
-        }
-
-        return newOptions
+        return processedOptions
     }
 
 
     /**
      * Performs the behavior for handling new and previously sorted fields.
      */
-    protected addNewOptions<K extends keyof T>(options: ProcessedSortingOptionsWithMeta<T, K>): number
+    protected addNewOptions<K extends keyof T>(options: ProcessedSortingOptions<T, K>): void
     {
-        const getInsertIndex = (insertBehavior: InsertBehavior<T, K>, prevIndex: number): [number, number] =>
+        let actualTarget: number
+        let deleteLength: number
+
+        if (options.clear.target === 'All')
         {
-            if (insertBehavior.strategy === 'PresetPosition')
-            {
-                if (insertBehavior.action === 'Replace')
-                {
-                    if (insertBehavior.target === 'SameType')
-                    {
-                        if (prevIndex !== -1)
-                            return [prevIndex, 1]
-
-                        else
-                            return getInsertIndex(insertBehavior.notFoundBehavior, prevIndex)
-                    }
-                }
-                else if (insertBehavior.action === 'Push')
-                {
-                    if (insertBehavior.target === 'Start')
-                        return [0, 0]
-
-                    else if (insertBehavior.target === 'End')
-                        return [this._options.length, 0]
-                }
-            }
-            else if (insertBehavior.strategy === 'SpecifiedField')
-            {
-                const targetIndex = this._options.findIndex(
-                    option => option.field === insertBehavior.target,
-                )
-
-                if (targetIndex === -1)
-                {
-                    if (insertBehavior.notFoundBehavior === undefined)
-                        return [-1, -1]
-
-                    return getInsertIndex(insertBehavior.notFoundBehavior, prevIndex)
-                }
-
-                else if (insertBehavior.action === 'Replace')
-                    return [targetIndex, 1]
-
-                else if (insertBehavior.action === 'NewAsSuper')
-                    return [targetIndex, 0]
-
-                else if (insertBehavior.action === 'NewAsNested')
-                    return [targetIndex + 1, 0]
-
-            }
-            else if (insertBehavior.strategy === 'SpecifiedFieldIndex')
-            {
-                const targetIndex = insertBehavior.target > this._options.length ?
-                                    this._options.length : insertBehavior.target < 0 ?
-                                                           0 : insertBehavior.target
-
-                if (insertBehavior.action === 'Replace')
-                    return [targetIndex, 1]
-
-                else if (insertBehavior.action === 'Push')
-                    return [targetIndex, 0]
-            }
-
-            return [-1, -1]
+            actualTarget = 0
+            deleteLength = this._options.length
+        }
+        else if (options.clear.target === 'AllParent')
+        {
+            actualTarget = 0
+            deleteLength = options.insertBehavior.insertAt
+        }
+        else if (options.clear.target === 'AllNested')
+        {
+            actualTarget = options.insertBehavior.insertAt
+            deleteLength = this._options.length - options.insertBehavior.insertAt
+        }
+        else if (options.clear.target === 'InsertPosition')
+        {
+            actualTarget = options.insertBehavior.insertAt
+            deleteLength = 1
+        }
+        else
+        {
+            actualTarget = options.insertBehavior.insertAt
+            deleteLength = 0
         }
 
-        const [index, count] = getInsertIndex(
-            options.insertBehavior,
-            this._options.findIndex(option => option.field === options.field),
+        this._options.splice(
+            actualTarget,
+            deleteLength,
+            options as any,
         )
 
-        if (index === -1) return -1
+        this._sortingRanges.splice(
+            actualTarget,
+            this._options.length,
+        )
 
-        this._options.splice(index, count, this.removeMeta(options as any))
-
-        return index
+        options.insertBehavior.insertAt = actualTarget
     }
 
 

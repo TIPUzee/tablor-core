@@ -1,16 +1,48 @@
 {
     "name": "tablor-core-beta",
-    "version": "1.0.2-l",
-    "peerDependencies": {
-        "@angular/common": "^19.0.0",
-        "@angular/core": "^19.0.0"
+    "version": "1.0.2-q",
+    "description": "Core features for data tables, grids, and advanced search, pagination, and sorting in Angular.",
+    "keywords": [
+        "angular",
+        "datatable",
+        "data-grid",
+        "core-library",
+        "pagination",
+        "sorting",
+        "nested-sorting",
+        "multi-field-sorting",
+        "search",
+        "string-query-search",
+        "date-ranges-search",
+        "number-ranges-search",
+        "exact-values-search",
+        "custom-search",
+        "multi-search",
+        "search-nesting",
+        "modular-systems",
+        "dynamic-tables",
+        "angular-datatables",
+        "angular-grids"
+    ],
+    "license": "Apache-2.0",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/TIPUzee/tablor-core.git/tree/beta/master"
     },
+    "author": {
+        "name": "Zeeshan Nadeem",
+        "email": "tipu.zee9@gmail.com",
+        "url": "https://github.com/TIPUzee"
+    },
+    "contributors": [
+    ],
     "dependencies": {
         "tslib": "^2.3.0"
     },
     "sideEffects": false,
     "scripts": {
-        "test": "jest"
+        "test": "jest",
+        "build": "ng build tablor-core-beta"
     },
     "devDependencies": {
         "@types/jest": "^29.5.14",

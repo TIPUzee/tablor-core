@@ -1,17 +1,31 @@
+
 # TablorCoreBeta
 
-## Do NOT use this library in Production.
+## ⚠️ **Important: Do NOT use this library (beta version) in production.** ⚠️
 
-This beta version is intended for development and testing only.
-Please use `tablor-core` instead.
+This is a **beta** version of the `TablorCore` library. It is intended for **development and testing** only. If you're looking for a stable version, please use `tablor-core` instead.
 
-## Demo
+## 🚀 Demo
 
-Please see [Tablor Core on Stackblitz](https://stackblitz.com/github/TIPUzee/tablor-core-demo/tree/beta/simple?file=src%2Fapp%2Fapp.component.ts).
-Note that demo is not completed yet.
+You can explore a live demo of `TablorCoreBeta` on [StackBlitz](https://stackblitz.com/github/TIPUzee/tablor-core-demo/tree/beta/simple?file=src/app/app.component.ts).  
+Please note that the demo is still under development and not yet fully completed.
 
-## License
+## 🛠️ Installation
 
-Apache-2.0
+To install the **beta** version of the library, use:
 
-Copyright 2024 TIPUzee
+```bash
+npm install tablor-core-beta
+```
+
+For the stable version, use:
+
+```bash
+npm install tablor-core
+```
+
+## 📄 License
+
+This project is licensed under the **Apache-2.0 License**.
+
+Copyright 2024 [TIPUzee](https://github.com/TIPUzee).
