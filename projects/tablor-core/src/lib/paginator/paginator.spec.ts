@@ -1,6 +1,5 @@
 import { ItemsStore } from '../stores/items-store/items-store'
 import { FieldsStore } from '../stores/fields-store/fields-store'
-import { AugmentedItem } from '../stores/items-store/interfaces'
 import { SampleItemType, SampleItemFields, SampleItems } from '../test-data/test-data-2'
 import { Paginator } from './paginator'
 import { expect } from '@jest/globals'

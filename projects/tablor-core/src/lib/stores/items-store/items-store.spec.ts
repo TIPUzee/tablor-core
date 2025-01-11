@@ -1,6 +1,6 @@
 import { ItemsStore } from './items-store'
 import { FieldsStore } from '../fields-store/fields-store'
-import { AugmentedItem, ImmutableAugmentedItem } from './interfaces'
+import { ImmutableAugmentedItem } from './interfaces'
 import { SampleItemFields, SampleItemType, SampleItems } from '../../test-data/test-data-2'
 
 

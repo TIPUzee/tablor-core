@@ -1,6 +1,6 @@
 {
     "$schema": "../../node_modules/ng-packagr/ng-package.schema.json",
-    "dest": "../../dist/tablor-core-beta",
+    "dest": "../../dist/tablor-core",
     "lib": {
         "entryFile": "src/public-api.ts"
     }

@@ -1,13 +1,13 @@
 {
-    "name": "core-beta",
+    "name": "core",
     "version": "0.0.0",
     "scripts": {
         "ng": "ng",
         "start": "ng serve",
-        "build": "ng build tablor-core-beta",
+        "build": "ng build tablor-core",
         "watch": "ng build --watch --configuration development",
-        "test": "cd projects/tablor-core-beta && jest",
-        "publish": "cd dist/tablor-core-beta && npm publish --access public"
+        "test": "cd projects/tablor-core && jest",
+        "publish": "cd dist/tablor-core && npm publish --access public"
     },
     "private": true,
     "dependencies": {
