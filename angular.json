@@ -3,23 +3,23 @@
   "version": 1,
   "newProjectRoot": "projects",
   "projects": {
-    "tablor-core": {
+    "tablor-core-beta": {
       "projectType": "library",
-      "root": "projects/tablor-core",
-      "sourceRoot": "projects/tablor-core/src",
+      "root": "projects/tablor-core-beta",
+      "sourceRoot": "projects/tablor-core-beta/src",
       "prefix": "lib",
       "architect": {
         "build": {
           "builder": "@angular-devkit/build-angular:ng-packagr",
           "options": {
-            "project": "projects/tablor-core/ng-package.json"
+            "project": "projects/tablor-core-beta/ng-package.json"
           },
           "configurations": {
             "production": {
-              "tsConfig": "projects/tablor-core/tsconfig.lib.prod.json"
+              "tsConfig": "projects/tablor-core-beta/tsconfig.lib.prod.json"
             },
             "development": {
-              "tsConfig": "projects/tablor-core/tsconfig.lib.json"
+              "tsConfig": "projects/tablor-core-beta/tsconfig.lib.json"
             }
           },
           "defaultConfiguration": "production"
@@ -27,7 +27,7 @@
         "test": {
           "builder": "@angular-devkit/build-angular:karma",
           "options": {
-            "tsConfig": "projects/tablor-core/tsconfig.spec.json",
+            "tsConfig": "projects/tablor-core-beta/tsconfig.spec.json",
             "polyfills": [
               "zone.js",
               "zone.js/testing"
