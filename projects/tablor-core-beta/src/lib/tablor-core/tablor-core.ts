@@ -1,4 +1,4 @@
-import { AugmentedItem, ImmutableAugmentedItem, Item } from '../stores/items-store/interfaces'
+import { Item } from '../stores/items-store/interfaces'
 import { ItemsStore } from '../stores/items-store/items-store'
 import { FieldsStore } from '../stores/fields-store/fields-store'
 import { Selector } from '../selector/selector'
@@ -68,29 +68,15 @@ import { Sorter } from '../sorter/sorter'
  */
 export class TablorCore<T extends Item<T>>
 {
-    protected readonly allItems: AugmentedItem<T>[] = []
-
-    protected readonly allSearchedItems: ImmutableAugmentedItem<T>[][] = []
-
-    protected readonly searchResults: ImmutableAugmentedItem<T>[] = []
-
     protected readonly fieldsStore: FieldsStore<T> = new FieldsStore<T>()
 
     protected readonly itemsStore: ItemsStore<T> =
-        new ItemsStore<T>(this.allItems, this.fieldsStore)
-
-    protected readonly selector = new Selector<T>(
-        this.itemsStore,
-        this.allItems,
-        this.itemsStore.$itemsRemoved,
-    )
+        new ItemsStore<T>(this.fieldsStore.getFieldsAsArray.bind(this.fieldsStore))
 
     protected readonly searcher = new Searcher<T>(
         this.fieldsStore.hasField.bind(this.fieldsStore),
         this.fieldsStore.getFieldsAsArray.bind(this.fieldsStore),
-        this.allItems,
-        this.allSearchedItems,
-        this.searchResults,
+        this.itemsStore.getItems.bind(this.itemsStore),
         this.itemsStore.$itemsAdded,
         this.itemsStore.$itemsRemoved,
         this.itemsStore.$itemsUpdated,
@@ -98,7 +84,7 @@ export class TablorCore<T extends Item<T>>
 
     protected readonly sorter = new Sorter<T>(
         this.fieldsStore.hasField.bind(this.fieldsStore),
-        this.searchResults,
+        this.searcher.getMutableItems.bind(this.searcher),
         this.searcher.$searchedItemsChanged,
         this.itemsStore.$itemsAdded,
         this.itemsStore.$itemsRemoved,
@@ -106,11 +92,18 @@ export class TablorCore<T extends Item<T>>
     )
 
     protected readonly paginator = new Paginator(
-        this.searchResults,
+        this.searcher.getMutableItems.bind(this.searcher),
         this.itemsStore.$itemsRemoved,
         this.itemsStore.$itemsAdded,
         this.searcher.$searchedItemsChanged,
         this.sorter.$sortingOptionsChanged,
+    )
+
+    protected readonly selector = new Selector<T>(
+        this.itemsStore.getMutableItems.bind(this.itemsStore),
+        this.paginator.getItems.bind(this.paginator),
+        this.itemsStore.findOneIndexForEach.bind(this.itemsStore),
+        this.itemsStore.$itemsRemoved,
     )
 
 
@@ -531,6 +524,114 @@ export class TablorCore<T extends Item<T>>
      */
     getNbOfSelectedItems
         = this.selector.getNbOfSelectedItems.bind(this.selector)
+
+    /**
+     * Retrieves the number of unselected items.
+     *
+     * @returnings the number of unselected items
+     *
+     * @keywords
+     * unselected items - Items that are unselected.
+     * Selection is identified by the `tablorMeta.isSelected` property.
+     */
+    getNbOfUnselectedItems
+        = this.selector.getNbOfUnselectedItems.bind(this.selector)
+
+    /**
+     * Retrieves the number of selected paginated items.
+     *
+     * @returnings the number of selected paginated items
+     *
+     * @keywords
+     * selected paginated items - Items that are selected.
+     * Selection is identified by the `tablorMeta.isSelected` property.
+     */
+    getNbOfSelectedPaginatedItems
+        = this.selector.getNbOfSelectedPaginatedItems.bind(this.selector)
+
+    /**
+     * Retrieves the number of unselected paginated items.
+     *
+     * @returnings the number of unselected paginated items
+     *
+     * @keywords
+     * unselected paginated items - Items that are unselected.
+     * Selection is identified by the `tablorMeta.isSelected` property.
+     */
+    getNbOfUnselectedPaginatedItems
+        = this.selector.getNbOfUnselectedPaginatedItems.bind(this.selector)
+
+    /**
+     * Retrieves the selected items.
+     *
+     * @returnings the selected items
+     *
+     * @keywords
+     * selected items - Items that are selected.
+     * Selection is identified by the `tablorMeta.isSelected` property.
+     */
+    getSelectedItems
+        = this.selector.getSelectedItems.bind(this.selector)
+
+    /**
+     * Retrieves the unselected items.
+     *
+     * @returnings the unselected items
+     *
+     * @keywords
+     * unselected items - Items that are unselected.
+     * Selection is identified by the `tablorMeta.isSelected` property.
+     */
+    getUnselectedItems
+        = this.selector.getUnselectedItems.bind(this.selector)
+
+    /**
+     * Retrieves the selected item uuids.
+     *
+     * @returnings the selected item uuids
+     *
+     * @keywords
+     * selected items - Items that are selected.
+     * Selection is identified by the `tablorMeta.isSelected` property.
+     */
+    getSelectedItemUuids
+        = this.selector.getSelectedItemUuids.bind(this.selector)
+
+    /**
+     * Retrieves the unselected item uuids.
+     *
+     * @returnings the unselected item uuids
+     *
+     * @keywords
+     * unselected items - Items that are unselected.
+     * Selection is identified by the `tablorMeta.isSelected` property.
+     */
+    getUnselectedItemUuids
+        = this.selector.getUnselectedItemUuids.bind(this.selector)
+
+    /**
+     * Retrieves the selected paginated items.
+     *
+     * @returnings the selected paginated items
+     *
+     * @keywords
+     * selected paginated items - Items that are selected.
+     * Selection is identified by the `tablorMeta.isSelected` property.
+     */
+    getSelectedPaginatedItems
+        = this.selector.getSelectedPaginatedItems.bind(this.selector)
+
+    /**
+     * Retrieves the unselected paginated items.
+     *
+     * @returnings the unselected paginated items
+     *
+     * @keywords
+     * unselected paginated items - Items that are unselected.
+     * Selection is identified by the `tablorMeta.isSelected` property.
+     */
+    getUnselectedPaginatedItems
+        = this.selector.getUnselectedPaginatedItems.bind(this.selector)
 
     /**
      * Retrieves the number of selected items in the given items.

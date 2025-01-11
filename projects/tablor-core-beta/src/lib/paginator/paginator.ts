@@ -1,3 +1,4 @@
+import { Subject } from 'rxjs'
 import
 {
     ImmutableAugmentedItem,
@@ -5,7 +6,6 @@ import
     ItemsRemovedPayload,
     Item,
 } from '../stores/items-store/interfaces'
-import { Subject } from 'rxjs'
 import
 {
     NbOfItemsPerPageChangedPayload,
@@ -15,8 +15,12 @@ import
 } from './interfaces'
 import { SearchedItemsChangedPayload } from '../searcher/searcher/interfaces'
 import { SortingOptionsChangedPayload } from '../sorter/interfaces'
+import { Searcher } from '../searcher/searcher/searcher'
 
 
+/**
+ * Handles pagination of items
+ */
 export class Paginator<T extends Item<T>>
 {
     protected _paginatedItems: Readonly<ImmutableAugmentedItem<T>[]> = []
@@ -31,7 +35,7 @@ export class Paginator<T extends Item<T>>
 
 
     constructor(
-        protected readonly searchResults: ImmutableAugmentedItem<T>[],
+        protected readonly getSearchResults: Searcher<T>['getMutableItems'],
         protected readonly $itemsRemoved: Subject<ItemsRemovedPayload<T>>,
         protected readonly $itemsAdded: Subject<ItemsAddedPayload<T>>,
         protected readonly $searchedItemsChanged: Subject<SearchedItemsChangedPayload<T>>,
@@ -45,54 +49,81 @@ export class Paginator<T extends Item<T>>
     }
 
 
+    /**
+     * Returns the current page number
+     */
     public getPageNb(): number
     {
         return this._pageNb
     }
 
 
+    /**
+     * Sets the current page number
+     */
     public setPageNb(nb: number): void
     {
         this.updatePageNb(nb)
     }
 
 
+    /**
+     * Returns the number of items per page
+     */
     public getNbOfItemsPerPage(): number
     {
         return this._nbOfItemsPerPage
     }
 
 
+    /**
+     * Sets the number of items per page
+     */
     public setNbOfItemsPerPage(nb: number): void
     {
         this.updateItemsPerPage(nb)
     }
 
 
+    /**
+     * Returns the total number of pages
+     */
     public getNbOfPages(): number
     {
         return this._nbOfTotalPages
     }
 
 
+    /**
+     * Returns the current page index
+     */
     public getPageIndex(): number
     {
         return this.getPageNb() - 1
     }
 
 
+    /**
+     * Returns the total number of items
+     */
     public getPageSize(): number
     {
         return this.getItems().length
     }
 
 
+    /**
+     * Returns the current page items
+     */
     public getItems(): Readonly<ImmutableAugmentedItem<T>[]>
     {
         return this._paginatedItems
     }
 
 
+    /**
+     * Updates the current page items
+     */
     protected updatePageItemsInternal(): void
     {
         const prevPaginatedItems = this._paginatedItems
@@ -100,13 +131,13 @@ export class Paginator<T extends Item<T>>
         const startIdx = this.getPageIndex() * this._nbOfItemsPerPage
         const endIdx =
             this._nbOfItemsPerPage === -1
-            ? this.searchResults.length
+            ? this.getSearchResults().length
             : startIdx + this._nbOfItemsPerPage
 
         if (this._nbOfItemsPerPage === -1)
-            this._paginatedItems = this.searchResults
+            this._paginatedItems = this.getSearchResults()
         else
-            this._paginatedItems = this.searchResults.slice(startIdx, endIdx)
+            this._paginatedItems = this.getSearchResults().slice(startIdx, endIdx)
 
         if (
             prevPaginatedItems.length !== this._paginatedItems.length ||
@@ -118,6 +149,9 @@ export class Paginator<T extends Item<T>>
     }
 
 
+    /**
+     * Updates the number of items per page
+     */
     protected updateItemsPerPage(nb: number): void
     {
         if (nb < 0) nb = -1
@@ -138,6 +172,9 @@ export class Paginator<T extends Item<T>>
     }
 
 
+    /**
+     * Updates the current page number
+     */
     protected updatePageNb(nb: number): void
     {
         const prevPageNb = this._pageNb
@@ -151,10 +188,13 @@ export class Paginator<T extends Item<T>>
     }
 
 
+    /**
+     * Updates the number of total pages
+     */
     protected updateNbOfTotalPages(): void
     {
         const prevNbOfTotalPages = this._nbOfTotalPages
-        const totalItems = this.searchResults.length
+        const totalItems = this.getSearchResults().length
 
         this._nbOfTotalPages = this._nbOfItemsPerPage === -1 ? 1 : Math.ceil(totalItems / this._nbOfItemsPerPage)
 
@@ -165,6 +205,9 @@ export class Paginator<T extends Item<T>>
     }
 
 
+    /**
+     * Updates the current page items
+     */
     protected handleItemsRemoved(): void
     {
         this.updateNbOfTotalPages()
@@ -173,6 +216,9 @@ export class Paginator<T extends Item<T>>
     }
 
 
+    /**
+     * Updates the current page items
+     */
     protected handleItemsAdded(): void
     {
         this.updateNbOfTotalPages()
@@ -181,6 +227,9 @@ export class Paginator<T extends Item<T>>
     }
 
 
+    /**
+     * Updates the current page items
+     */
     protected handleItemsSearched(): void
     {
         this.updateNbOfTotalPages()
@@ -189,12 +238,18 @@ export class Paginator<T extends Item<T>>
     }
 
 
+    /**
+     * Updates the current page items
+     */
     protected handleItemsSorted(): void
     {
         this.updatePageItemsInternal()
     }
 
 
+    /**
+     * Updates the current page items
+     */
     protected raiseNbOfItemsPerPageChanged(prevNbOfItemsPerPage: number): void
     {
         this.$nbOfItemsPerPageChanged.next({
@@ -204,6 +259,9 @@ export class Paginator<T extends Item<T>>
     }
 
 
+    /**
+     * Updates the current page items
+     */
     protected raiseNbOfTotalPagesChanged(prevNbOfTotalPages: number): void
     {
         this.$nbOfTotalPagesChanged.next({
@@ -213,12 +271,18 @@ export class Paginator<T extends Item<T>>
     }
 
 
+    /**
+     * Updates the current page items
+     */
     protected raisePageNbChanged(prevPageNb: number): void
     {
         this.$pageNbChanged.next({ prevPageNb, pageNb: this._pageNb })
     }
 
 
+    /**
+     * Updates the current page items
+     */
     protected raisePaginatedItemsChanged(prevPaginatedItems: Readonly<ImmutableAugmentedItem<T>[]>): void
     {
         this.$paginatedItemsChanged.next({

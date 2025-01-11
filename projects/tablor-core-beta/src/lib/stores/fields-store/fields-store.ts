@@ -94,7 +94,7 @@ export class FieldsStore<T extends Item<T>>
      *
      * @param fields - Fields to update as object or array.
      */
-    public updateFields<K extends Item<T>>(
+    public updateFields(
         fields: (RegularField<T> & { key: keyof T })[] | Partial<RegularFields<T>>,
     ): void
     {

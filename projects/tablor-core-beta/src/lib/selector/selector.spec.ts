@@ -1,24 +1,55 @@
 import { Selector } from './selector'
 import { ItemsStore } from '../stores/items-store/items-store'
-import { AugmentedItem } from '../stores/items-store/interfaces'
 import { FieldsStore } from '../stores/fields-store/fields-store'
 import { expect } from '@jest/globals'
 import { SampleItemType, SampleItemFields, SampleItems } from '../test-data/test-data-2'
+import { Paginator } from '../paginator/paginator'
+import { Searcher } from '../searcher/searcher/searcher'
+import { Sorter } from '../sorter/sorter'
 
 
 describe('Selector', () =>
 {
-    let selector: Selector<SampleItemType>
     let itemsStore: ItemsStore<SampleItemType>
     let fieldsStore: FieldsStore<SampleItemType>
-    let allItems: AugmentedItem<SampleItemType>[]
+    let searcher: Searcher<SampleItemType>
+    let sorter: Sorter<SampleItemType>
+    let paginator: Paginator<SampleItemType>
+    let selector: Selector<SampleItemType>
 
     beforeEach(() =>
     {
-        allItems = []
         fieldsStore = new FieldsStore<SampleItemType>()
-        itemsStore = new ItemsStore<SampleItemType>(allItems, fieldsStore)
-        selector = new Selector<SampleItemType>(itemsStore, allItems, itemsStore.$itemsRemoved)
+        itemsStore = new ItemsStore<SampleItemType>(fieldsStore.getFieldsAsArray.bind(fieldsStore))
+        searcher = new Searcher<SampleItemType>(
+            fieldsStore.hasField.bind(fieldsStore),
+            fieldsStore.getFieldsAsArray.bind(fieldsStore),
+            itemsStore.getItems.bind(itemsStore),
+            itemsStore.$itemsAdded,
+            itemsStore.$itemsRemoved,
+            itemsStore.$itemsUpdated,
+        )
+        sorter = new Sorter<SampleItemType>(
+            fieldsStore.hasField.bind(fieldsStore),
+            searcher.getMutableItems.bind(searcher),
+            searcher.$searchedItemsChanged,
+            itemsStore.$itemsAdded,
+            itemsStore.$itemsRemoved,
+            itemsStore.$itemsUpdated,
+        )
+        paginator = new Paginator<SampleItemType>(
+            searcher.getMutableItems.bind(searcher),
+            itemsStore.$itemsRemoved,
+            itemsStore.$itemsAdded,
+            searcher.$searchedItemsChanged,
+            sorter.$sortingOptionsChanged,
+        )
+        selector = new Selector<SampleItemType>(
+            itemsStore.getItems.bind(itemsStore),
+            paginator.getItems.bind(paginator),
+            itemsStore.findOneIndexForEach.bind(itemsStore),
+            itemsStore.$itemsRemoved,
+        )
 
         fieldsStore.initialize(SampleItemFields)
         itemsStore.initialize(SampleItems)
@@ -29,7 +60,7 @@ describe('Selector', () =>
         expect(selector.getNbOfSelectedItems()).toBe(0)
     })
 
-    test('should select an item and emit an events', () =>
+    test('should select an item and emit an event', () =>
     {
         let fn = jest.fn()
         selector.$itemsSelectionChanged.subscribe(fn)
@@ -49,7 +80,7 @@ describe('Selector', () =>
         })
     })
 
-    test('should deselect an item and emit an events', () =>
+    test('should deselect an item and emit an event', () =>
     {
         const item1 = itemsStore.getItems()[0]
         selector.select(item1, true)

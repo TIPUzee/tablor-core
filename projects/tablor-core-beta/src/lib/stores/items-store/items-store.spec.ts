@@ -6,7 +6,6 @@ import { SampleItemFields, SampleItemType, SampleItems } from '../../test-data/t
 
 describe('ItemStore', () =>
 {
-    let allItems: AugmentedItem<SampleItemType>[]
     let fieldsStore: FieldsStore<SampleItemType>
     let itemsStore: ItemsStore<SampleItemType>
 
@@ -14,8 +13,7 @@ describe('ItemStore', () =>
     {
         fieldsStore = new FieldsStore<SampleItemType>()
         fieldsStore.initialize(SampleItemFields)
-        allItems = []
-        itemsStore = new ItemsStore<SampleItemType>(allItems, fieldsStore)
+        itemsStore = new ItemsStore<SampleItemType>(fieldsStore.getFieldsAsArray.bind(fieldsStore))
     })
 
     describe('Initialization', () =>
@@ -24,19 +22,6 @@ describe('ItemStore', () =>
         {
             expect(itemsStore.getItems().length).toBe(0)
             expect(itemsStore.getNbOfItems()).toBe(0)
-        })
-
-        test('should throw an error if initialized with non-empty allItems', () =>
-        {
-            // @ts-ignore
-            const InvalidItemRef: List<AugmentedItem<SampleItemType>> = [{}]
-
-            expect(() => new ItemsStore(
-                InvalidItemRef,
-                fieldsStore,
-            )).toThrow(
-                'ItemsStore: The provided allItems should be an empty array.',
-            )
         })
     })
 

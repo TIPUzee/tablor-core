@@ -1,5 +1,4 @@
 import {
-    AugmentedItem,
     ImmutableAugmentedItem,
     Item,
     ItemsAddedPayload, ItemsRemovedPayload,
@@ -18,6 +17,8 @@ import {
 import { SearchedItemsChangedPayload } from '../searcher/searcher/interfaces'
 import { defaultCompareFn } from './sorter-utils'
 import { areEqualArrays, resolveIndex } from '../utils/utility-fns'
+import { FieldsStore } from '../stores/fields-store/fields-store'
+import { Searcher } from '../searcher/searcher/searcher'
 
 
 /**
@@ -34,8 +35,8 @@ export class Sorter<T extends Item<T>>
 
 
     constructor(
-        protected readonly hasField: (key: keyof T) => boolean,
-        protected readonly searchResults: AugmentedItem<T>[],
+        protected readonly hasField: FieldsStore<T>['hasField'],
+        protected readonly getSearchResults: Searcher<T>['getMutableItems'],
         protected readonly $searchedItemsChanged: Subject<SearchedItemsChangedPayload<T>>,
         protected readonly $itemsAdded: Subject<ItemsAddedPayload<T>>,
         protected readonly $itemsRemoved: Subject<ItemsRemovedPayload<T>>,
@@ -116,7 +117,7 @@ export class Sorter<T extends Item<T>>
      */
     public getItems(): Readonly<ImmutableAugmentedItem<T>[]>
     {
-        return this.searchResults
+        return this.getSearchResults()
     }
 
 
@@ -126,7 +127,7 @@ export class Sorter<T extends Item<T>>
      * @remarks
      * This method is only for testing purposes
      */
-    protected getSortingRanges(): Readonly<Readonly<Readonly<SortRange>[]>[]>
+    public getSortingRanges(): Readonly<Readonly<Readonly<SortRange>[]>[]>
     {
         return this._sortingRanges
     }
@@ -144,7 +145,7 @@ export class Sorter<T extends Item<T>>
         const sortFn: (a: ImmutableAugmentedItem<T>, b: ImmutableAugmentedItem<T>) => number
             = (a, b) => (a.tablorMeta.uuid - b.tablorMeta.uuid)
 
-        this.searchResults.sort(sortFn)
+        this.getSearchResults().sort(sortFn)
 
         this.$sortingOptionsChanged.next({
             options: this.getOptions(true),
@@ -162,7 +163,7 @@ export class Sorter<T extends Item<T>>
             return
 
         const prevOptions = [...this.getOptions(true)]
-        const prevSortedItems = [...this.searchResults]
+        const prevSortedItems = [...this.getSearchResults()]
 
         const processedOptions = this.processOptions(options)
 
@@ -179,13 +180,13 @@ export class Sorter<T extends Item<T>>
         })
 
         this.$itemsSorted.next({
-            items: this.searchResults,
+            items: this.getSearchResults(),
             prevItems: prevSortedItems,
         })
 
-        if (!areEqualArrays(this.searchResults, prevSortedItems))
+        if (!areEqualArrays(this.getSearchResults(), prevSortedItems))
             this.$sortedItemsChanged.next({
-                items: this.searchResults,
+                items: this.getSearchResults(),
                 prevItems: prevSortedItems,
             })
     }
@@ -214,18 +215,18 @@ export class Sorter<T extends Item<T>>
 
         if (optionsIndex === 0)
         {
-            const sortedItems = this.applySort(
-                this.searchResults,
+            this.applySort(
+                this.getSearchResults(),
                 currCompareFn,
                 optionsIndex,
             )
 
-            this.searchResults.splice(0, this.searchResults.length, ...sortedItems)
+            // this.searchResults().splice(0, this.searchResults().length, ...sortedItems)
 
             this._sortingRanges.splice(
                 0, this._sortingRanges.length,
                 this.makeSortingRangesForNestedSortingOptions(
-                    this.searchResults,
+                    this.getSearchResults(),
                     currCompareFnForNestedMatch,
                     optionsIndex,
                 ),
@@ -236,18 +237,18 @@ export class Sorter<T extends Item<T>>
             for (let range of this._sortingRanges[optionsIndex - 1])
             {
                 const sortedItems = this.applySort(
-                    this.searchResults.slice(range.start, range.end),
+                    this.getSearchResults().slice(range.start, range.end),
                     currCompareFn,
                     optionsIndex,
                 )
 
-                this.searchResults.splice(range.start, range.end - range.start, ...sortedItems)
+                this.getSearchResults().splice(range.start, range.end - range.start, ...sortedItems)
             }
 
             this._sortingRanges.splice(
                 optionsIndex, this._sortingRanges.length,
                 this.makeSortingRangesForNestedSortingOptions(
-                    this.searchResults,
+                    this.getSearchResults(),
                     currCompareFnForNestedMatch,
                     optionsIndex,
                 ),
@@ -269,7 +270,7 @@ export class Sorter<T extends Item<T>>
 
         const superRanges: SortRange[] =
             optionsIndex === 0 ?
-                [{ start: 0, end: this.searchResults.length }] :
+                [{ start: 0, end: items.length }] :
             this._sortingRanges[optionsIndex - 1]
 
         for (let range of superRanges)
@@ -499,7 +500,7 @@ export class Sorter<T extends Item<T>>
      */
     protected handleSearchedItemsChange(): void
     {
-        const prevSortedItems = [...this.searchResults]
+        const prevSortedItems = [...this.getSearchResults()]
 
         for (let optionsIndex = 0; optionsIndex < this._options.length; optionsIndex++)
         {
@@ -507,12 +508,12 @@ export class Sorter<T extends Item<T>>
         }
 
         if (
-            prevSortedItems.length !== this.searchResults.length ||
-            prevSortedItems.some((item, index) => item !== this.searchResults[index])
+            prevSortedItems.length !== this.getSearchResults().length ||
+            prevSortedItems.some((item, index) => item !== this.getSearchResults()[index])
         )
         {
             this.$sortedItemsChanged.next({
-                items: this.searchResults,
+                items: this.getSearchResults(),
                 prevItems: prevSortedItems,
             })
         }

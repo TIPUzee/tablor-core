@@ -16,6 +16,8 @@ import { Subject } from 'rxjs'
  */
 export class ItemsStore<T extends Item<T>>
 {
+    protected allItems: AugmentedItem<T>[] = []
+
     protected _uuidCounter: number = 0
     protected _loading: boolean = false
 
@@ -26,12 +28,9 @@ export class ItemsStore<T extends Item<T>>
 
 
     constructor(
-        protected readonly allItems: AugmentedItem<T>[],
-        protected readonly fieldsStore: FieldsStore<T>,
+        protected readonly getFieldsAsArray: FieldsStore<T>['getFieldsAsArray'],
     )
     {
-        if (this.allItems.length !== 0) throw new Error('ItemsStore: The provided allItems should be an empty array.')
-
         this.setLoading = this.setLoading.bind(this)
     }
 
@@ -66,6 +65,12 @@ export class ItemsStore<T extends Item<T>>
     }
 
 
+    public getMutableItems(): AugmentedItem<T>[]
+    {
+        return this.allItems
+    }
+
+
     /**
      * Sets the loading state and triggers the corresponding event.
      */
@@ -91,7 +96,7 @@ export class ItemsStore<T extends Item<T>>
 
         this.setLoading(true)
 
-        const fieldsArray = this.fieldsStore.getFieldsAsArray()
+        const fieldsArray = this.getFieldsAsArray()
 
         ItemsUtils.replaceItemsInPlace(
             this.allItems,
@@ -115,7 +120,7 @@ export class ItemsStore<T extends Item<T>>
 
         this.setLoading(true)
 
-        const fieldsArray = this.fieldsStore.getFieldsAsArray()
+        const fieldsArray = this.getFieldsAsArray()
 
         const _items = ItemsUtils.augmentItems(
             // @ts-ignore
@@ -134,7 +139,9 @@ export class ItemsStore<T extends Item<T>>
     /**
      * Removes items from the store by UUID or item reference.
      */
-    public remove(itemsAndUuids: Readonly<(ImmutableAugmentedItem<T> | ImmutableRegularItem<T> | number | undefined)[]>): boolean[]
+    public remove(
+        itemsAndUuids: Readonly<(ImmutableAugmentedItem<T> | ImmutableRegularItem<T> | number | undefined)[]>,
+    ): boolean[]
     {
         this.setLoading(true)
 
@@ -173,7 +180,7 @@ export class ItemsStore<T extends Item<T>>
 
         const indexes = this.findOneIndexForEach(items)
 
-        const fieldsArray = this.fieldsStore.getFieldsAsArray()
+        const fieldsArray = this.getFieldsAsArray()
 
         const updateState = this.updateByIndex(
             ItemsUtils.mapItemsPropsToFields(items, fieldsArray, false),
@@ -201,7 +208,7 @@ export class ItemsStore<T extends Item<T>>
 
         const indexes = this.findOneIndexForEach(uuids)
 
-        const fieldsArray = this.fieldsStore.getFieldsAsArray()
+        const fieldsArray = this.getFieldsAsArray()
 
         const updateState = this.updateByIndex(
             ItemsUtils.mapItemsPropsToFields(items, fieldsArray, false),
@@ -259,7 +266,9 @@ export class ItemsStore<T extends Item<T>>
     /**
      * Finds and returns items matching the given UUIDs or item references.
      */
-    public findOneMatchingItemForEach(itemsAndUuids: Readonly<(ImmutableAugmentedItem<T> | ImmutableRegularItem<T> | number | undefined)[]>): (ImmutableAugmentedItem<T> | undefined)[]
+    public findOneMatchingItemForEach(
+        itemsAndUuids: Readonly<(ImmutableAugmentedItem<T> | ImmutableRegularItem<T> | number | undefined)[]>,
+    ): (ImmutableAugmentedItem<T> | undefined)[]
     {
         if (itemsAndUuids.length === 0) return []
 
@@ -271,7 +280,10 @@ export class ItemsStore<T extends Item<T>>
     /**
      * Finds and returns the indexes of items matching the given UUIDs or item references.
      */
-    public findOneIndexForEach(itemsAndUuids: Readonly<(ImmutableAugmentedItem<T> | ImmutableRegularItem<T> | ImmutableAugmentedPartialRegularItem<T> | number | undefined)[]>): number[]
+    public findOneIndexForEach(
+        itemsAndUuids: Readonly<(ImmutableAugmentedItem<T> | ImmutableRegularItem<T>
+            | ImmutableAugmentedPartialRegularItem<T> | number | undefined)[]>,
+    ): number[]
     {
         return ItemsUtils.findIndexes(this.allItems, itemsAndUuids)
     }
@@ -280,7 +292,10 @@ export class ItemsStore<T extends Item<T>>
     /**
      * Finds and returns all the possible indexes of items matching the given UUIDs or item references.
      */
-    public findAllPossibleIndexesForEach(itemsAndUuids: Readonly<(ImmutableAugmentedItem<T> | ImmutableRegularItem<T> | ImmutableAugmentedPartialRegularItem<T> | number | undefined)[]>): number[][]
+    public findAllPossibleIndexesForEach(
+        itemsAndUuids: Readonly<(ImmutableAugmentedItem<T> | ImmutableRegularItem<T>
+            | ImmutableAugmentedPartialRegularItem<T> | number | undefined)[]>,
+    ): number[][]
     {
         return ItemsUtils.findAllIndexes(this.allItems, itemsAndUuids)
     }

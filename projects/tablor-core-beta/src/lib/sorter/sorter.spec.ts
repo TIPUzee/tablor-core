@@ -2,48 +2,27 @@ import { describe, expect } from '@jest/globals'
 import { ItemsStore } from '../stores/items-store/items-store'
 import { SampleItemFields, SampleItemType, SampleItems } from '../test-data/test-data-3'
 import { FieldsStore } from '../stores/fields-store/fields-store'
-import { AugmentedItem } from '../stores/items-store/interfaces'
 import { Searcher } from '../searcher/searcher/searcher'
 import { Sorter } from './sorter'
 
 
 describe('Sorter', () =>
 {
-    let allItems: AugmentedItem<SampleItemType>[]
-    let allSearchedItems: AugmentedItem<SampleItemType>[][]
-    let searchResults: AugmentedItem<SampleItemType>[]
     let itemsStore: ItemsStore<SampleItemType>
     let fieldsStore: FieldsStore<SampleItemType>
     let searcher: Searcher<SampleItemType>
     let sorter: Sorter<SampleItemType>
 
-    const consoleAllItems = () =>
-    {
-        const f = []
-
-        for (let i = 0; i < searchResults.length; i++)
-        {
-            f.push(`${ searchResults[i].UserName } ${ searchResults[i].Amount } ${ searchResults[i].tablorMeta.uuid }`)
-        }
-
-        console.log(f)
-    }
-
     beforeEach(() =>
     {
-        allItems = []
-        searchResults = []
-        allSearchedItems = []
         fieldsStore = new FieldsStore<SampleItemType>()
 
-        itemsStore = new ItemsStore<SampleItemType>(allItems, fieldsStore)
+        itemsStore = new ItemsStore<SampleItemType>(fieldsStore.getFieldsAsArray.bind(fieldsStore))
 
         searcher = new Searcher<SampleItemType>(
             fieldsStore.hasField.bind(fieldsStore),
             fieldsStore.getFieldsAsArray.bind(fieldsStore),
-            allItems,
-            allSearchedItems,
-            searchResults,
+            itemsStore.getMutableItems.bind(itemsStore),
             itemsStore.$itemsAdded,
             itemsStore.$itemsRemoved,
             itemsStore.$itemsUpdated,
@@ -51,7 +30,7 @@ describe('Sorter', () =>
 
         sorter = new Sorter<SampleItemType>(
             fieldsStore.hasField.bind(fieldsStore),
-            searchResults,
+            searcher.getMutableItems.bind(searcher),
             searcher.$searchedItemsChanged,
             itemsStore.$itemsAdded,
             itemsStore.$itemsRemoved,
@@ -69,8 +48,8 @@ describe('Sorter', () =>
             order: 'ASC',
         })
 
-        expect(searchResults[0].UserName).toBe('Ahmed')
-        expect(searchResults[searchResults.length - 1].UserName).toBe('Zeeshan')
+        expect(sorter.getItems()[0].UserName).toBe('Ahmed')
+        expect(sorter.getItems()[sorter.getItems().length - 1].UserName).toBe('Zeeshan')
     })
 
     test('should sort data up to the first level in desc', () =>
@@ -80,8 +59,8 @@ describe('Sorter', () =>
             order: 'DESC',
         })
 
-        expect(searchResults[0].UserName).toBe('Zeeshan')
-        expect(searchResults[searchResults.length - 1].UserName).toBe('Ahmed')
+        expect(sorter.getItems()[0].UserName).toBe('Zeeshan')
+        expect(sorter.getItems()[sorter.getItems().length - 1].UserName).toBe('Ahmed')
     })
 
     test('should sort data upto 1st level via toggle', () =>
@@ -91,33 +70,33 @@ describe('Sorter', () =>
             order: 'Toggle',
         })
 
-        expect(searchResults[0].UserName).toBe('Ahmed')
-        expect(searchResults[searchResults.length - 1].UserName).toBe('Zeeshan')
+        expect(sorter.getItems()[0].UserName).toBe('Ahmed')
+        expect(sorter.getItems()[sorter.getItems().length - 1].UserName).toBe('Zeeshan')
 
         sorter.sort({
             field: 'UserName',
             order: 'Toggle',
         })
 
-        expect(searchResults[0].UserName).toBe('Zeeshan')
-        expect(searchResults[searchResults.length - 1].UserName).toBe('Ahmed')
+        expect(sorter.getItems()[0].UserName).toBe('Zeeshan')
+        expect(sorter.getItems()[sorter.getItems().length - 1].UserName).toBe('Ahmed')
 
         sorter.sort({
             field: 'UserName',
             order: 'Toggle',
         })
 
-        expect(searchResults[0].UserName).toBe('Zeeshan')
-        expect(searchResults[searchResults.length - 2].UserName).toBe('Zeeshan')
-        expect(searchResults[searchResults.length - 1].UserName).toBe('Ahmed')
+        expect(sorter.getItems()[0].UserName).toBe('Zeeshan')
+        expect(sorter.getItems()[sorter.getItems().length - 2].UserName).toBe('Zeeshan')
+        expect(sorter.getItems()[sorter.getItems().length - 1].UserName).toBe('Ahmed')
 
         sorter.sort({
             field: 'UserName',
             order: 'Toggle',
         })
 
-        expect(searchResults[0].UserName).toBe('Ahmed')
-        expect(searchResults[searchResults.length - 1].UserName).toBe('Zeeshan')
+        expect(sorter.getItems()[0].UserName).toBe('Ahmed')
+        expect(sorter.getItems()[sorter.getItems().length - 1].UserName).toBe('Zeeshan')
     })
 
     test('should sort data up to the second level in asc', () =>
@@ -132,17 +111,17 @@ describe('Sorter', () =>
             order: 'ASC',
         })
 
-        expect(searchResults[0].UserName).toBe('Ahmed')
-        expect(searchResults[0].Amount).toBe(1000)
+        expect(sorter.getItems()[0].UserName).toBe('Ahmed')
+        expect(sorter.getItems()[0].Amount).toBe(1000)
 
-        expect(searchResults[1].UserName).toBe('Ahmed')
-        expect(searchResults[1].Amount).toBe(1500)
+        expect(sorter.getItems()[1].UserName).toBe('Ahmed')
+        expect(sorter.getItems()[1].Amount).toBe(1500)
 
-        expect(searchResults[11].UserName).toBe('Ali')
-        expect(searchResults[11].Amount).toBe(1000)
+        expect(sorter.getItems()[11].UserName).toBe('Ali')
+        expect(sorter.getItems()[11].Amount).toBe(1000)
 
-        expect(searchResults[searchResults.length - 1].UserName).toBe('Zeeshan')
-        expect(searchResults[searchResults.length - 1].Amount).toBe(5000)
+        expect(sorter.getItems()[sorter.getItems().length - 1].UserName).toBe('Zeeshan')
+        expect(sorter.getItems()[sorter.getItems().length - 1].Amount).toBe(5000)
     })
 
     test('should sort data up to the second level by toggle nested option', () =>
@@ -157,37 +136,37 @@ describe('Sorter', () =>
             order: 'Toggle',
         })
 
-        expect(searchResults[0].UserName).toBe('Ahmed')
-        expect(searchResults[0].Amount).toBe(1000)
+        expect(sorter.getItems()[0].UserName).toBe('Ahmed')
+        expect(sorter.getItems()[0].Amount).toBe(1000)
 
-        expect(searchResults[1].UserName).toBe('Ahmed')
-        expect(searchResults[1].Amount).toBe(1500)
+        expect(sorter.getItems()[1].UserName).toBe('Ahmed')
+        expect(sorter.getItems()[1].Amount).toBe(1500)
 
-        expect(searchResults[10].UserName).toBe('Ahmed')
-        expect(searchResults[10].Amount).toBe(5000)
+        expect(sorter.getItems()[10].UserName).toBe('Ahmed')
+        expect(sorter.getItems()[10].Amount).toBe(5000)
 
-        expect(searchResults[11].UserName).toBe('Ali')
-        expect(searchResults[11].Amount).toBe(1000)
+        expect(sorter.getItems()[11].UserName).toBe('Ali')
+        expect(sorter.getItems()[11].Amount).toBe(1000)
 
-        expect(searchResults[searchResults.length - 1].UserName).toBe('Zeeshan')
-        expect(searchResults[searchResults.length - 1].Amount).toBe(5000)
+        expect(sorter.getItems()[sorter.getItems().length - 1].UserName).toBe('Zeeshan')
+        expect(sorter.getItems()[sorter.getItems().length - 1].Amount).toBe(5000)
 
         sorter.sort({
             field: 'Amount',
             order: 'Toggle',
         })
 
-        expect(searchResults[0].UserName).toBe('Ahmed')
-        expect(searchResults[0].Amount).toBe(5000)
+        expect(sorter.getItems()[0].UserName).toBe('Ahmed')
+        expect(sorter.getItems()[0].Amount).toBe(5000)
 
-        expect(searchResults[10].UserName).toBe('Ahmed')
-        expect(searchResults[10].Amount).toBe(1000)
+        expect(sorter.getItems()[10].UserName).toBe('Ahmed')
+        expect(sorter.getItems()[10].Amount).toBe(1000)
 
-        expect(searchResults[11].UserName).toBe('Ali')
-        expect(searchResults[11].Amount).toBe(5000)
+        expect(sorter.getItems()[11].UserName).toBe('Ali')
+        expect(sorter.getItems()[11].Amount).toBe(5000)
 
-        expect(searchResults[searchResults.length - 1].UserName).toBe('Zeeshan')
-        expect(searchResults[searchResults.length - 1].Amount).toBe(1200)
+        expect(sorter.getItems()[sorter.getItems().length - 1].UserName).toBe('Zeeshan')
+        expect(sorter.getItems()[sorter.getItems().length - 1].Amount).toBe(1200)
     })
 
     test(
@@ -203,40 +182,40 @@ describe('Sorter', () =>
                 order: 'Toggle',
             })
 
-            expect(searchResults[0].UserName).toBe('Ahmed')
-            expect(searchResults[0].Amount).toBe(1000)
+            expect(sorter.getItems()[0].UserName).toBe('Ahmed')
+            expect(sorter.getItems()[0].Amount).toBe(1000)
 
-            expect(searchResults[1].UserName).toBe('Ahmed')
-            expect(searchResults[1].Amount).toBe(1500)
+            expect(sorter.getItems()[1].UserName).toBe('Ahmed')
+            expect(sorter.getItems()[1].Amount).toBe(1500)
 
-            expect(searchResults[10].UserName).toBe('Ahmed')
-            expect(searchResults[10].Amount).toBe(5000)
+            expect(sorter.getItems()[10].UserName).toBe('Ahmed')
+            expect(sorter.getItems()[10].Amount).toBe(5000)
 
-            expect(searchResults[11].UserName).toBe('Ali')
-            expect(searchResults[11].Amount).toBe(1000)
+            expect(sorter.getItems()[11].UserName).toBe('Ali')
+            expect(sorter.getItems()[11].Amount).toBe(1000)
 
-            expect(searchResults[searchResults.length - 1].UserName).toBe('Zeeshan')
-            expect(searchResults[searchResults.length - 1].Amount).toBe(5000)
+            expect(sorter.getItems()[sorter.getItems().length - 1].UserName).toBe('Zeeshan')
+            expect(sorter.getItems()[sorter.getItems().length - 1].Amount).toBe(5000)
 
             sorter.sort({
                 field: 'UserName',
                 order: 'Toggle',
             })
 
-            expect(searchResults[0].UserName).toBe('Zeeshan')
-            expect(searchResults[0].Amount).toBe(1200)
+            expect(sorter.getItems()[0].UserName).toBe('Zeeshan')
+            expect(sorter.getItems()[0].Amount).toBe(1200)
 
-            expect(searchResults[17].UserName).toBe('Zeeshan')
-            expect(searchResults[17].Amount).toBe(5000)
+            expect(sorter.getItems()[17].UserName).toBe('Zeeshan')
+            expect(sorter.getItems()[17].Amount).toBe(5000)
 
-            expect(searchResults[18].UserName).toBe('Ali')
-            expect(searchResults[18].Amount).toBe(1000)
+            expect(sorter.getItems()[18].UserName).toBe('Ali')
+            expect(sorter.getItems()[18].Amount).toBe(1000)
 
-            expect(searchResults[19].UserName).toBe('Ali')
-            expect(searchResults[19].Amount).toBe(1500)
+            expect(sorter.getItems()[19].UserName).toBe('Ali')
+            expect(sorter.getItems()[19].Amount).toBe(1500)
 
-            expect(searchResults[39].UserName).toBe('Ahmed')
-            expect(searchResults[39].Amount).toBe(5000)
+            expect(sorter.getItems()[39].UserName).toBe('Ahmed')
+            expect(sorter.getItems()[39].Amount).toBe(5000)
         },
     )
 
@@ -257,7 +236,7 @@ describe('Sorter', () =>
             order: 'ASC',
         })
 
-        expect(searchResults[0].TransactionType).toBe('Purchase')
+        expect(sorter.getItems()[0].TransactionType).toBe('Purchase')
     })
 
     test('should sort data up to the second level in desc', () =>
@@ -271,14 +250,14 @@ describe('Sorter', () =>
             order: 'DESC',
         })
 
-        expect(searchResults[0].UserName).toBe('Zeeshan')
-        expect(searchResults[0].Amount).toBe(5000)
+        expect(sorter.getItems()[0].UserName).toBe('Zeeshan')
+        expect(sorter.getItems()[0].Amount).toBe(5000)
 
-        expect(searchResults[18].UserName).toBe('Ali')
-        expect(searchResults[18].Amount).toBe(5000)
+        expect(sorter.getItems()[18].UserName).toBe('Ali')
+        expect(sorter.getItems()[18].Amount).toBe(5000)
 
-        expect(searchResults[searchResults.length - 1].UserName).toBe('Ahmed')
-        expect(searchResults[searchResults.length - 1].Amount).toBe(1000)
+        expect(sorter.getItems()[sorter.getItems().length - 1].UserName).toBe('Ahmed')
+        expect(sorter.getItems()[sorter.getItems().length - 1].Amount).toBe(1000)
     })
 
     test('should sort data up to the second level in desc after sorting up to the first level', () =>
@@ -298,16 +277,16 @@ describe('Sorter', () =>
             order: 'DESC',
         })
 
-        expect(searchResults[0].UserName).toBe('Zeeshan')
-        expect(searchResults[0].Amount).toBe(5000)
+        expect(sorter.getItems()[0].UserName).toBe('Zeeshan')
+        expect(sorter.getItems()[0].Amount).toBe(5000)
 
-        itemsStore.remove([searchResults[17].tablorMeta.uuid])
+        itemsStore.remove([sorter.getItems()[17].tablorMeta.uuid])
 
-        expect(searchResults[17].UserName).toBe('Ali')
-        expect(searchResults[17].Amount).toBe(5000)
+        expect(sorter.getItems()[17].UserName).toBe('Ali')
+        expect(sorter.getItems()[17].Amount).toBe(5000)
 
-        expect(searchResults[searchResults.length - 1].UserName).toBe('Ahmed')
-        expect(searchResults[searchResults.length - 1].Amount).toBe(1000)
+        expect(sorter.getItems()[sorter.getItems().length - 1].UserName).toBe('Ahmed')
+        expect(sorter.getItems()[sorter.getItems().length - 1].Amount).toBe(1000)
     })
 
     test('should sort the data after updating an item', () =>
@@ -326,9 +305,9 @@ describe('Sorter', () =>
             { ...itemsStore.getItems()[0], UserName: 'John' },
         ])
 
-        expect(searchResults[0].UserName).toBe('Zeeshan')
-        expect(searchResults[17].UserName).toBe('John')
-        expect(searchResults[18].UserName).toBe('Ali')
+        expect(sorter.getItems()[0].UserName).toBe('Zeeshan')
+        expect(sorter.getItems()[17].UserName).toBe('John')
+        expect(sorter.getItems()[18].UserName).toBe('Ali')
     })
 
     test('should sort the data after updating an item - 2', () =>
@@ -344,12 +323,12 @@ describe('Sorter', () =>
         })
 
         itemsStore.updateByInItemUuid([
-            { ...searchResults[22], Amount: 6000 },
+            { ...sorter.getItems()[22], Amount: 6000 },
         ])
 
-        expect(searchResults[0].UserName).toBe('Zeeshan')
-        expect(searchResults[18].UserName).toBe('Ali')
-        expect(searchResults[18].Amount).toBe(6000)
+        expect(sorter.getItems()[0].UserName).toBe('Zeeshan')
+        expect(sorter.getItems()[18].UserName).toBe('Ali')
+        expect(sorter.getItems()[18].Amount).toBe(6000)
     })
 
     test('should sort the data after adding an item', () =>
@@ -375,9 +354,9 @@ describe('Sorter', () =>
             },
         ])
 
-        expect(searchResults[0].UserName).toBe('Zeeshan')
-        expect(searchResults[18].UserName).toBe('John')
-        expect(searchResults[19].UserName).toBe('Ali')
+        expect(sorter.getItems()[0].UserName).toBe('Zeeshan')
+        expect(sorter.getItems()[18].UserName).toBe('John')
+        expect(sorter.getItems()[19].UserName).toBe('Ali')
     })
 
     test('should trigger sort event after sorting', () =>
@@ -418,13 +397,13 @@ describe('Sorter', () =>
 
         sorter.clearSort()
 
-        expect(searchResults[0].UserName).toBe('Zeeshan')
-        expect(searchResults[4].UserName).toBe('Zeeshan')
-        expect(searchResults[5].UserName).toBe('Ali')
-        expect(searchResults[7].UserName).toBe('Ahmed')
-        expect(searchResults[23].UserName).toBe('Ali')
-        expect(searchResults[38].UserName).toBe('Zeeshan')
-        expect(searchResults[39].UserName).toBe('Ahmed')
+        expect(sorter.getItems()[0].UserName).toBe('Zeeshan')
+        expect(sorter.getItems()[4].UserName).toBe('Zeeshan')
+        expect(sorter.getItems()[5].UserName).toBe('Ali')
+        expect(sorter.getItems()[7].UserName).toBe('Ahmed')
+        expect(sorter.getItems()[23].UserName).toBe('Ali')
+        expect(sorter.getItems()[38].UserName).toBe('Zeeshan')
+        expect(sorter.getItems()[39].UserName).toBe('Ahmed')
     })
 
     test('should "not" trigger if items are added or updated', () =>
@@ -490,61 +469,61 @@ describe('Sorter', () =>
             order: 'Toggle',
         })
 
-        expect(searchResults[0].UserName).toBe('Ahmed')
-        expect(searchResults[0].Amount).toBe(1000)
+        expect(sorter.getItems()[0].UserName).toBe('Ahmed')
+        expect(sorter.getItems()[0].Amount).toBe(1000)
 
-        expect(searchResults[1].UserName).toBe('Ahmed')
-        expect(searchResults[1].Amount).toBe(1500)
+        expect(sorter.getItems()[1].UserName).toBe('Ahmed')
+        expect(sorter.getItems()[1].Amount).toBe(1500)
 
-        expect(searchResults[10].UserName).toBe('Ahmed')
-        expect(searchResults[10].Amount).toBe(5000)
+        expect(sorter.getItems()[10].UserName).toBe('Ahmed')
+        expect(sorter.getItems()[10].Amount).toBe(5000)
 
-        expect(searchResults[11].UserName).toBe('Ali')
-        expect(searchResults[11].Amount).toBe(1000)
+        expect(sorter.getItems()[11].UserName).toBe('Ali')
+        expect(sorter.getItems()[11].Amount).toBe(1000)
 
-        expect(searchResults[searchResults.length - 1].UserName).toBe('Zeeshan')
-        expect(searchResults[searchResults.length - 1].Amount).toBe(5000)
+        expect(sorter.getItems()[sorter.getItems().length - 1].UserName).toBe('Zeeshan')
+        expect(sorter.getItems()[sorter.getItems().length - 1].Amount).toBe(5000)
 
         sorter.sort({
             field: 'Amount',
             order: 'Toggle',
         })
 
-        expect(searchResults[0].UserName).toBe('Ahmed')
-        expect(searchResults[0].Amount).toBe(5000)
+        expect(sorter.getItems()[0].UserName).toBe('Ahmed')
+        expect(sorter.getItems()[0].Amount).toBe(5000)
 
-        expect(searchResults[10].UserName).toBe('Ahmed')
-        expect(searchResults[10].Amount).toBe(1000)
+        expect(sorter.getItems()[10].UserName).toBe('Ahmed')
+        expect(sorter.getItems()[10].Amount).toBe(1000)
 
-        expect(searchResults[11].UserName).toBe('Ali')
-        expect(searchResults[11].Amount).toBe(5000)
+        expect(sorter.getItems()[11].UserName).toBe('Ali')
+        expect(sorter.getItems()[11].Amount).toBe(5000)
 
-        expect(searchResults[searchResults.length - 1].UserName).toBe('Zeeshan')
-        expect(searchResults[searchResults.length - 1].Amount).toBe(1200)
+        expect(sorter.getItems()[sorter.getItems().length - 1].UserName).toBe('Zeeshan')
+        expect(sorter.getItems()[sorter.getItems().length - 1].Amount).toBe(1200)
 
         sorter.sort({
             field: 'Date',
             order: 'ASC',
         })
 
-        expect(searchResults[0].Date).toEqual(new Date('2024-11-05'))
-        expect(searchResults[1].Date).toEqual(new Date('2024-11-05'))
-        expect(searchResults[3].Date).toEqual(new Date('2024-11-06'))
-        expect(searchResults[4].Date).toEqual(new Date('2024-11-06'))
-        expect(searchResults[8].Date).toEqual(new Date('2024-11-07'))
-        expect(searchResults[9].Date).toEqual(new Date('2024-11-07'))
-        expect(searchResults[searchResults.length - 3].Date).toEqual(new Date('2024-11-12'))
-        expect(searchResults[searchResults.length - 1].Date).toEqual(new Date('2024-11-12'))
+        expect(sorter.getItems()[0].Date).toEqual(new Date('2024-11-05'))
+        expect(sorter.getItems()[1].Date).toEqual(new Date('2024-11-05'))
+        expect(sorter.getItems()[3].Date).toEqual(new Date('2024-11-06'))
+        expect(sorter.getItems()[4].Date).toEqual(new Date('2024-11-06'))
+        expect(sorter.getItems()[8].Date).toEqual(new Date('2024-11-07'))
+        expect(sorter.getItems()[9].Date).toEqual(new Date('2024-11-07'))
+        expect(sorter.getItems()[sorter.getItems().length - 3].Date).toEqual(new Date('2024-11-12'))
+        expect(sorter.getItems()[sorter.getItems().length - 1].Date).toEqual(new Date('2024-11-12'))
 
-        expect(searchResults[0].UserName).toEqual('Ali')
-        expect(searchResults[1].UserName).toEqual('Zeeshan')
-        expect(searchResults[3].UserName).toEqual('Ahmed')
-        expect(searchResults[4].UserName).toEqual('Ahmed')
-        expect(searchResults[4].UserName).toEqual('Ahmed')
-        expect(searchResults[8].UserName).toEqual('Ahmed')
-        expect(searchResults[9].UserName).toEqual('Ahmed')
-        expect(searchResults[searchResults.length - 3].UserName).toEqual('Ali')
-        expect(searchResults[searchResults.length - 1].UserName).toEqual('Zeeshan')
+        expect(sorter.getItems()[0].UserName).toEqual('Ali')
+        expect(sorter.getItems()[1].UserName).toEqual('Zeeshan')
+        expect(sorter.getItems()[3].UserName).toEqual('Ahmed')
+        expect(sorter.getItems()[4].UserName).toEqual('Ahmed')
+        expect(sorter.getItems()[4].UserName).toEqual('Ahmed')
+        expect(sorter.getItems()[8].UserName).toEqual('Ahmed')
+        expect(sorter.getItems()[9].UserName).toEqual('Ahmed')
+        expect(sorter.getItems()[sorter.getItems().length - 3].UserName).toEqual('Ali')
+        expect(sorter.getItems()[sorter.getItems().length - 1].UserName).toEqual('Zeeshan')
     })
 
     test('should sort a nested sorting option with none-sorted super options', () =>
@@ -555,9 +534,9 @@ describe('Sorter', () =>
             supportedToggleOrders: ['ASC', 'ORIGINAL'],
         })
 
-        expect(searchResults[0].UserName).toBe('Ahmed')
-        expect(searchResults[searchResults.length - 2].UserName).toBe('Zeeshan')
-        expect(searchResults[searchResults.length - 1].UserName).toBe('Zeeshan')
+        expect(sorter.getItems()[0].UserName).toBe('Ahmed')
+        expect(sorter.getItems()[sorter.getItems().length - 2].UserName).toBe('Zeeshan')
+        expect(sorter.getItems()[sorter.getItems().length - 1].UserName).toBe('Zeeshan')
 
         sorter.sort({
             field: 'UserName',
@@ -565,9 +544,9 @@ describe('Sorter', () =>
             supportedToggleOrders: ['ASC', 'ORIGINAL'],
         })
 
-        expect(searchResults[0].UserName).toBe('Zeeshan')
-        expect(searchResults[searchResults.length - 2].UserName).toBe('Zeeshan')
-        expect(searchResults[searchResults.length - 1].UserName).toBe('Ahmed')
+        expect(sorter.getItems()[0].UserName).toBe('Zeeshan')
+        expect(sorter.getItems()[sorter.getItems().length - 2].UserName).toBe('Zeeshan')
+        expect(sorter.getItems()[sorter.getItems().length - 1].UserName).toBe('Ahmed')
     })
 
     test('should sort a nested sorting option up to six levels', () =>
@@ -694,10 +673,10 @@ describe('Sorter', () =>
             expect.objectContaining({ order: 'NONE', field: 'TransactionType' }),
         ])
 
-        expect(searchResults[0].TransactionID).toBe(1)
-        expect(searchResults[1].TransactionID).toBe(2)
-        expect(searchResults[2].TransactionID).toBe(3)
-        expect(searchResults[searchResults.length - 1].TransactionID).toBe(40)
+        expect(sorter.getItems()[0].TransactionID).toBe(1)
+        expect(sorter.getItems()[1].TransactionID).toBe(2)
+        expect(sorter.getItems()[2].TransactionID).toBe(3)
+        expect(sorter.getItems()[sorter.getItems().length - 1].TransactionID).toBe(40)
 
         // Level 5 - DESC
         sorter.sort({
@@ -717,12 +696,12 @@ describe('Sorter', () =>
             order: 'Toggle',
         })
 
-        expect(searchResults[0].UserName).toBe('Ahmed')
-        expect(searchResults[1].UserName).toBe('Ahmed')
-        expect(searchResults[2].UserName).toBe('Ahmed')
-        expect(searchResults[3].UserName).toBe('Ahmed')
-        expect(searchResults[searchResults.length - 3].UserName).toBe('Zeeshan')
-        expect(searchResults[searchResults.length - 2].UserName).toBe('Zeeshan')
-        expect(searchResults[searchResults.length - 1].UserName).toBe('Zeeshan')
+        expect(sorter.getItems()[0].UserName).toBe('Ahmed')
+        expect(sorter.getItems()[1].UserName).toBe('Ahmed')
+        expect(sorter.getItems()[2].UserName).toBe('Ahmed')
+        expect(sorter.getItems()[3].UserName).toBe('Ahmed')
+        expect(sorter.getItems()[sorter.getItems().length - 3].UserName).toBe('Zeeshan')
+        expect(sorter.getItems()[sorter.getItems().length - 2].UserName).toBe('Zeeshan')
+        expect(sorter.getItems()[sorter.getItems().length - 1].UserName).toBe('Zeeshan')
     })
 })

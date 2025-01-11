@@ -1,10 +1,8 @@
 import {
-    AugmentedItem,
     ImmutableAugmentedItem,
     ItemsAddedPayload, ItemsRemovedPayload, ItemsUpdatedPayload,
     Item,
 } from '../../stores/items-store/interfaces'
-import { ProcessedField } from '../../stores/fields-store/interfaces'
 import { StringQuerySearcher } from '../string-query-searcher/string-query-searcher'
 import { DateRangeSearcher } from '../date-ranges-searcher/date-range-searcher'
 import { NumberRangesSearcher } from '../numbers-range-searcher/number-ranges-searcher'
@@ -26,6 +24,8 @@ import {
     SearchOptionsChangedPayload,
     ItemsSearchedPayload,
 } from './interfaces'
+import { ItemsStore } from '../../stores/items-store/items-store'
+import { FieldsStore } from '../../stores/fields-store/fields-store'
 
 
 /**
@@ -33,6 +33,9 @@ import {
  */
 export class Searcher<T extends Item<T>>
 {
+    protected allSearchedItems: ImmutableAugmentedItem<T>[][] = []
+    protected searchResults: ImmutableAugmentedItem<T>[] = []
+
     protected readonly stringQuerySearcher: StringQuerySearcher<T>
     protected readonly dateRangesSearcher: DateRangeSearcher<T>
     protected readonly numbersRangesSearcher: NumberRangesSearcher<T>
@@ -53,11 +56,9 @@ export class Searcher<T extends Item<T>>
 
 
     constructor(
-        protected readonly hasField: (key: keyof T) => boolean,
-        protected readonly getFields: () => ProcessedField<T, keyof T>[],
-        protected readonly allItems: AugmentedItem<T>[],
-        protected readonly allSearchedItems: ImmutableAugmentedItem<T>[][],
-        protected readonly searchResults: ImmutableAugmentedItem<T>[],
+        protected readonly hasField: FieldsStore<T>['hasField'],
+        protected readonly getFields: FieldsStore<T>['getFieldsAsArray'],
+        protected readonly getAllItems: ItemsStore<T>['getItems'],
         protected readonly $itemsAdded: Subject<ItemsAddedPayload<T>>,
         protected readonly $itemsRemoved: Subject<ItemsRemovedPayload<T>>,
         protected readonly $itemsUpdated: Subject<ItemsUpdatedPayload<T>>,
@@ -88,7 +89,16 @@ export class Searcher<T extends Item<T>>
     /**
      * Returns the searched items.
      */
-    public getItems(): ImmutableAugmentedItem<T>[]
+    public getItems(): Readonly<ImmutableAugmentedItem<T>[]>
+    {
+        return this.searchResults
+    }
+
+
+    /**
+     * Returns the mutable searched items.
+     */
+    public getMutableItems(): ImmutableAugmentedItem<T>[]
     {
         return this.searchResults
     }
@@ -262,7 +272,7 @@ export class Searcher<T extends Item<T>>
     {
         if (this.allSearchedItems.length === 0)
         {
-            this.searchResults.splice(0, this.searchResults.length, ...this.allItems)
+            this.searchResults.splice(0, this.searchResults.length, ...this.getAllItems())
             return
         }
 
@@ -465,13 +475,13 @@ export class Searcher<T extends Item<T>>
      */
     protected getTargetItems(options: ProcessedSearchableOptions<T>): ImmutableAugmentedItem<T>[]
     {
-        if (this.getOptions().length === 0) return this.allItems
+        if (this.getOptions().length === 0) return this.getAllItems()
 
         if (options.searchTarget.scope === 'All')
-            return this.allItems
+            return this.getAllItems()
 
         else if (options.searchTarget.scope === 'Prev')
-            return this.getItems()
+            return this.getMutableItems()
 
         else
             throw new Error('Invalid search target scope')

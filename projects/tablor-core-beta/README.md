@@ -1,31 +1,20 @@
+# Tablor Core - Beta 🌟
 
-# TablorCoreBeta
+**Create beautiful datatables, grid views, and more effortlessly with Tablor-Core!**  
+Leverage powerful features already implemented—you just need to focus on your UI.
 
-## ⚠️ **Important: Do NOT use this library (beta version) in production.** ⚠️
+This is a beta version of Tablor Core.
 
-This is a **beta** version of the `TablorCore` library. It is intended for **development and testing** only. If you're looking for a stable version, please use `tablor-core` instead.
+--- 
 
-## 🚀 Demo
+## ⚠️ Do NOT use library beta version ⚠️
 
-You can explore a live demo of `TablorCoreBeta` on [StackBlitz](https://stackblitz.com/github/TIPUzee/tablor-core-demo/tree/beta/simple?file=src/app/app.component.ts).  
-Please note that the demo is still under development and not yet fully completed.
+### Use the [stable version](https://www.npmjs.com/tablor-core) instead.
 
-## 🛠️ Installation
-
-To install the **beta** version of the library, use:
-
-```bash
-npm install tablor-core-beta
-```
-
-For the stable version, use:
-
-```bash
-npm install tablor-core
-```
+--- 
 
 ## 📄 License
 
 This project is licensed under the **Apache-2.0 License**.
 
-Copyright 2024 [TIPUzee](https://github.com/TIPUzee).
+Copyright 2025 [TIPUzee](https://github.com/TIPUzee).

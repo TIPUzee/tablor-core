@@ -5,9 +5,10 @@ import {
     ImmutableRegularItem,
     Item, ItemsRemovedPayload,
 } from '../stores/items-store/interfaces'
-import { ItemsStore } from '../stores/items-store/items-store'
 import { Subject } from 'rxjs'
 import { ItemsSelectionChangedPayload } from './interfaces'
+import { ItemsStore } from '../stores/items-store/items-store'
+import { Paginator } from '../paginator/paginator'
 
 
 /**
@@ -17,12 +18,14 @@ export class Selector<T extends Item<T>>
 {
     protected _selectedUuids: number[] = []
 
-    public readonly $itemsSelectionChanged: Subject<ItemsSelectionChangedPayload<T>> = new Subject<ItemsSelectionChangedPayload<T>>()
+    public readonly $itemsSelectionChanged: Subject<ItemsSelectionChangedPayload<T>>
+        = new Subject<ItemsSelectionChangedPayload<T>>()
 
 
     constructor(
-        protected readonly itemsStore: ItemsStore<T>,
-        protected readonly allItems: AugmentedItem<T>[],
+        protected readonly getAllItems: ItemsStore<T>['getMutableItems'],
+        protected readonly getPaginatedItems: Paginator<T>['getItems'],
+        protected readonly findOneIndexForEach: ItemsStore<T>['findOneIndexForEach'],
         protected readonly $itemsRemoved: Subject<ItemsRemovedPayload<T>>,
     )
     {
@@ -39,11 +42,99 @@ export class Selector<T extends Item<T>>
     }
 
 
+    public getNbOfUnselectedItems(): number
+    {
+        return this.getAllItems().length - this._selectedUuids.length
+    }
+
+
+    public getNbOfSelectedPaginatedItems(): number
+    {
+        if (this.getAllItems().length === this.getPaginatedItems().length)
+            return this.getNbOfSelectedItems()
+
+        return this.getPaginatedItems().filter(item => this._selectedUuids.includes(item.tablorMeta.uuid)).length
+    }
+
+
+    public getNbOfUnselectedPaginatedItems(): number
+    {
+        if (this.getAllItems().length === this.getPaginatedItems().length)
+            return this.getNbOfUnselectedItems()
+
+        return this.getPaginatedItems().filter(item => !this._selectedUuids.includes(item.tablorMeta.uuid)).length
+    }
+
+
+    /**
+     * Returns the number of selected items in the given items.
+     */
+    public getNbOfSelectedItemsIn(
+        items: Readonly<(ImmutableAugmentedPartialRegularItem<T> | number | undefined)[]>,
+    ): number
+    {
+        return items.reduce(
+            (c: number, item) =>
+            {
+                if (item === undefined)
+                    return c
+
+                else if (typeof item === 'number')
+                    return c + (this._selectedUuids.includes(item) ? 1 : 0)
+
+                else if (typeof item === 'object' && 'tablorMeta' in item)
+                    return c + (this._selectedUuids.includes(item.tablorMeta.uuid) ? 1 : 0)
+
+                return c
+            },
+            0,
+        )
+    }
+
+
+    public getSelectedItems(): ImmutableAugmentedItem<T>[]
+    {
+        return this.getAllItems().filter(item => this._selectedUuids.includes(item.tablorMeta.uuid))
+    }
+
+
+    public getUnselectedItems(): ImmutableAugmentedItem<T>[]
+    {
+        return this.getAllItems().filter(item => !this._selectedUuids.includes(item.tablorMeta.uuid))
+    }
+
+
+    public getSelectedItemUuids(): number[]
+    {
+        return this._selectedUuids
+    }
+
+
+    public getUnselectedItemUuids(): number[]
+    {
+        return this.getAllItems().map(item => item.tablorMeta.uuid).filter(uuid => !this._selectedUuids.includes(uuid))
+    }
+
+
+    public getSelectedPaginatedItems(): ImmutableAugmentedItem<T>[]
+    {
+        return this.getPaginatedItems().filter(item => this._selectedUuids.includes(item.tablorMeta.uuid))
+    }
+
+
+    public getUnselectedPaginatedItems(): ImmutableAugmentedItem<T>[]
+    {
+        return this.getPaginatedItems().filter(item => !this._selectedUuids.includes(item.tablorMeta.uuid))
+    }
+
+
     /**
      * Selects or deselects an item.
      */
     public select(
-        item: ImmutableAugmentedItem<T> | ImmutableRegularItem<T> | ImmutableAugmentedPartialRegularItem<T> | number | undefined,
+        item:
+            ImmutableAugmentedItem<T> | ImmutableRegularItem<T> | ImmutableAugmentedPartialRegularItem<T>
+            | number | undefined,
         state: boolean | 'toggle',
     ): void
     {
@@ -51,7 +142,7 @@ export class Selector<T extends Item<T>>
         if (i === -1) return
 
         this.$itemsSelectionChanged.next({
-            items: [this.allItems[i]],
+            items: [this.getAllItems()[i]],
         })
     }
 
@@ -60,7 +151,10 @@ export class Selector<T extends Item<T>>
      * Selects or deselects multiple items.
      */
     public selectMultiple(
-        items: Readonly<(ImmutableAugmentedItem<T> | ImmutableRegularItem<T> | ImmutableAugmentedPartialRegularItem<T> | number | undefined)[]>,
+        items: Readonly<(
+            ImmutableAugmentedItem<T> | ImmutableRegularItem<T> | ImmutableAugmentedPartialRegularItem<T>
+            | number | undefined
+            )[]>,
         states: (boolean | 'toggle')[] | (boolean | 'toggle'),
     ): void
     {
@@ -86,35 +180,11 @@ export class Selector<T extends Item<T>>
             }
         }
 
-        const selectedItems = indexes.map(i => this.itemsStore.getItems()[i])
+        const selectedItems = indexes.map(i => this.getAllItems()[i])
 
         this.$itemsSelectionChanged.next({
             items: selectedItems,
         })
-    }
-
-
-    /**
-     * Returns the number of selected items in the given items.
-     */
-    public getNbOfSelectedItemsIn(items: Readonly<(ImmutableAugmentedPartialRegularItem<T> | number | undefined)[]>): number
-    {
-        return items.reduce(
-            (c: number, item) =>
-            {
-                if (item === undefined)
-                    return c
-
-                else if (typeof item === 'number')
-                    return c + (this._selectedUuids.includes(item) ? 1 : 0)
-
-                else if (typeof item === 'object' && 'tablorMeta' in item)
-                    return c + (this._selectedUuids.includes(item.tablorMeta.uuid) ? 1 : 0)
-
-                return c
-            },
-            0,
-        )
     }
 
 
@@ -133,28 +203,32 @@ export class Selector<T extends Item<T>>
      * Selects or deselects an item.
      */
     protected selectInternal(
-        item: ImmutableAugmentedItem<T> | ImmutableRegularItem<T> | ImmutableAugmentedPartialRegularItem<T> | number | undefined,
+        item: ImmutableAugmentedItem<T> | ImmutableRegularItem<T> | ImmutableAugmentedPartialRegularItem<T>
+            | number | undefined,
         state: boolean | 'toggle',
     ): number
     {
-        const i = this.itemsStore.findOneIndexForEach([item])[0]
+        if (item === undefined) return -1
+
+        const i = this.findOneIndexForEach([item])[0]
         if (i === -1) return -1
 
         if (state === 'toggle')
-        {
-            state = !this.allItems[i].tablorMeta.isSelected
-            this.allItems[i].tablorMeta.isSelected = state
-        }
-        else if ((state || !state) && this.allItems[i].tablorMeta.isSelected !== state)
-        {
-            this.allItems[i].tablorMeta.isSelected = state
-        }
+            state = !this.getAllItems()[i].tablorMeta.isSelected
 
         if (state)
-            this._selectedUuids.push(this.allItems[i].tablorMeta.uuid)
+        {
+            if (!this._selectedUuids.includes(this.getAllItems()[i].tablorMeta.uuid))
+                this._selectedUuids.push(this.getAllItems()[i].tablorMeta.uuid)
+        }
         else
-            this._selectedUuids = this._selectedUuids
-                .filter(uuid => uuid !== this.allItems[i].tablorMeta.uuid)
+        {
+            if (this._selectedUuids.includes(this.getAllItems()[i].tablorMeta.uuid))
+                this._selectedUuids = this._selectedUuids
+                    .filter(uuid => uuid !== this.getAllItems()[i].tablorMeta.uuid)
+        }
+
+        this.getAllItems()[i].tablorMeta.isSelected = state
 
         return i
     }

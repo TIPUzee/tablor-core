@@ -9,9 +9,6 @@ import { Searcher } from './searcher'
 
 describe('Searcher Class Tests', () =>
 {
-    let allItems: AugmentedItem<SampleItemType>[]
-    let allSearchedItems: AugmentedItem<SampleItemType>[][]
-    let searchResults: ImmutableAugmentedItem<SampleItemType>[]
     let fieldsStore: FieldsStore<SampleItemType>
     let itemsStore: ItemsStore<SampleItemType>
     let searcher: Searcher<SampleItemType>
@@ -58,17 +55,12 @@ describe('Searcher Class Tests', () =>
 
     beforeEach(() =>
     {
-        allItems = []
-        allSearchedItems = []
-        searchResults = []
         fieldsStore = new FieldsStore<SampleItemType>()
-        itemsStore = new ItemsStore<SampleItemType>(allItems, fieldsStore)
+        itemsStore = new ItemsStore<SampleItemType>(fieldsStore.getFieldsAsArray.bind(fieldsStore))
         searcher = new Searcher<SampleItemType>(
             fieldsStore.hasField.bind(fieldsStore),
             fieldsStore.getFieldsAsArray.bind(fieldsStore),
-            allItems,
-            allSearchedItems,
-            searchResults,
+            itemsStore.getMutableItems.bind(itemsStore),
             itemsStore.$itemsAdded,
             itemsStore.$itemsRemoved,
             itemsStore.$itemsUpdated,
@@ -178,7 +170,7 @@ describe('Searcher Class Tests', () =>
             query: '66000',
             convertToString: {
                 number: n => n.toString(),
-            }
+            },
         })
 
         expect(searcher.getItems()).toEqual([
