@@ -14,8 +14,11 @@ Please use the stable version
 
 ## Demo
 
-- Fully functioning preview with pre-built UI:  
+- Fully functioning preview with pre-built (sample) UI:  
   **👉 [Sample Preview](https://stackblitz.com/github/TIPUzee/tablor-core-demo/tree/beta/simple?file=src%2Fapp%2Fapp.component.ts)**
+
+- Fully functioning preview with Spartan UI:  
+  **👉 [Spartan-UI Preview](https://stackblitz.com/github/TIPUzee/tablor-core-demo/tree/spartan-ui?file=src%2Fapp%2Fapp.component.ts)**
 
 - Minimal setup with dataset for your own implementation:  
   **👉 [Try It Yourself](https://stackblitz.com/github/TIPUzee/tablor-core-demo/tree/master?file=src%2Fapp%2Fapp.component.ts)**

@@ -1,6 +1,6 @@
 {
     "name": "tablor-core-beta",
-    "version": "1.0.2-t",
+    "version": "1.0.2-u",
     "description": "Core features for data tables, grids, and advanced search, pagination, and sorting in Angular.",
     "keywords": [
         "angular",
