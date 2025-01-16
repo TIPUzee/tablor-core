@@ -7,8 +7,11 @@ Leverage powerful features already implemented—you just need to focus on your 
 
 ## Demo
 
-- Fully functioning preview with pre-built UI:  
-  **👉 [Sample Preview](https://stackblitz.com/github/TIPUzee/tablor-core-demo/tree/beta/simple?file=src%2Fapp%2Fapp.component.ts)**
+- Fully functioning preview with pre-built (sample) UI:  
+  **👉 [Sample Preview](https://stackblitz.com/github/TIPUzee/tablor-core-demo/tree/simple-ui?file=src%2Fapp%2Fapp.component.ts)**
+
+- Fully functioning preview with Spartan UI:  
+  **👉 [Spartan-UI Preview](https://stackblitz.com/github/TIPUzee/tablor-core-demo/tree/spartan-ui?file=src%2Fapp%2Fapp.component.ts)**
 
 - Minimal setup with dataset for your own implementation:  
   **👉 [Try It Yourself](https://stackblitz.com/github/TIPUzee/tablor-core-demo/tree/master?file=src%2Fapp%2Fapp.component.ts)**
@@ -92,6 +95,413 @@ Tablor-Core offers an extensive toolkit for building interactive and dynamic dat
 🔗 **Start Building with Tablor-Core Today!**
 
 --- 
+
+## How to Use Tablor-Core
+
+### 1. Define Your Data and Fields
+
+#### `user.interface.ts`
+
+```typescript
+import { TablorCoreTypes as TcT } from 'tablor-core';
+
+
+export type User = {
+    id: number;
+    name: string;
+    email: string;
+    dob: Date | null;
+    cgpa: number,
+};
+
+export type UserTcT = TcT<User>;
+
+export const userFields: UserTcT['RegularFields'] = {
+    id: { title: 'ID' },
+    name: { title: 'Name' },
+    email: { title: 'Email' },
+    dob: { title: 'Date of Birth' },
+    cgpa: { title: 'CGPA' },
+};
+```
+
+#### `user.data.ts`
+
+```typescript
+import { User } from './user.interface';
+
+
+export const users: User[] = [
+    { id: 1, name: 'John Doe', email: 'M3u5W@example.com', dob: new Date('1990-01-01'), cgpa: 3.7 },
+    { id: 2, name: 'Jane Smith', email: 'H7Uwq@example.com', dob: null, cgpa: 3.0 },
+    // Add more data as needed...
+];
+```
+
+### 2. Initialize TablorCore in Your Component
+
+#### `my.component.ts`
+
+```typescript
+import { Component } from '@angular/core';
+import { TablorCore } from 'tablor-core';
+import { User, UserTcT, userFields } from './user.interface';
+import { users } from './user.data';
+
+
+@Component({
+    selector: 'my-component',
+    templateUrl: './my.component.html',
+    styleUrls: ['./my.component.scss'],
+})
+export class MyComponent
+{
+    readonly tablorCore: TablorCore<User> = new TablorCore();
+
+
+    constructor()
+    {
+        this.tablorCore.initializeFields(userFields);
+        this.tablorCore.initializeItems(users);
+    }
+}
+```
+
+### 3. Use TablorCore in Templates
+
+#### `my.component.html`
+
+```angular17html
+
+<table>
+   <thead>
+      <tr>
+         <th *ngFor="let field of tablorCore.getFieldsAsArray()">
+            {{ field.title }}
+         </th>
+      </tr>
+   </thead>
+   <tbody>
+      <tr *ngFor="let item of tablorCore.getPaginatedItems()">
+         <td *ngFor="let field of tablorCore.getFieldsAsArray()">
+            {{ item[field.key] }}
+         </td>
+      </tr>
+   </tbody>
+</table>
+
+<button (click)="tablorCore.setPageNb(tablorCore.getPageNb() + 1)">
+   Next Page
+</button>
+```
+
+### 4. Sorting Examples
+
+#### Sort by Single Field
+
+```typescript
+tablorCore.sort({
+    field: 'name',
+    order: 'Toggle',
+    insertBehavior: {
+        insertAt: 0,
+    },
+    clear: {
+        target: 'AllNested',
+    },
+});
+```
+
+#### Sort by Multiple Nested Fields
+
+Use cases: Sort transactions by **transaction amount**, then **nested sort by transaction date**. Means if there are multiple transactions with the same amount, older transactions should show up first.
+
+```typescript
+tablorCore.sort({
+    field: 'name',
+    order: 'DESC',
+});
+
+tablorCore.sort({
+    field: 'dob',
+    order: 'ASC',
+});
+
+// Items will be sorted first by name as desc order, then by date of birth as asc order.
+// e.g.
+// Zeeshan Nadeem (1990-01-01) // there are multiple items with the same name
+// Zeeshan Nadeem (1995-01-01)
+// Zeeshan Nadeem (2000-01-01)
+// John Doe (1990-01-01)
+// Jahn Doe (1991-01-01)
+// Jane Smith (null)
+```
+
+#### Handle undefined and null values for sorting
+
+```typescript
+tablorCore.sort({
+    field: 'dob',
+    order: 'Toggle',
+    prioritizeNulls: 'AlwaysLast',
+    prioritizeUndefineds: 'AlwaysLast',
+    insertBehavior: {
+        insertAt: 0,
+    },
+    clear: {
+        target: 'AllNested',
+    },
+});
+
+// Possible options: 'AlwaysFirst' | 'AlwaysLast' | 'FirstOnASC' | 'LastOnASC'
+// 'FirstOnASC' means if sorted by ASC order, null/undefined values will be sorted first.
+// And if sorted by DESC order, it will be sorted last.
+```
+
+### 5. Searching Examples
+
+#### Search by String Query
+
+```typescript
+tablorCore.searchByStringQuery({
+    query: 'Zeeshan Nadeem',
+    includeFields: ['name', 'email'],
+    prevResults: {
+        action: 'Clear',
+        scope: 'All',
+    },
+});
+```
+
+#### Search by String with Non-String Conversion
+
+```typescript
+tablorCore.searchByStringQuery({
+    query: 'Zeeshan 31 Mar',
+    includeFields: ['name', 'email', 'dob', 'cgpa'],
+    convertToString: {
+        string: s => s,
+        number: n => n.toString(),
+        date: d => d.toGMTString(),
+        boolean: b => b.toString(),
+        null: () => 'null',
+        undefined: () => 'undefined',
+    },
+    prevResults: {
+        action: 'Clear',
+        scope: 'All',
+    },
+});
+```
+
+### 6. Advanced Search Examples
+
+#### Search by Date Ranges
+
+```typescript
+tablorCore.searchByDateTimesRanges({
+    ranges: {
+        dob: [
+            { start: new Date('2020-01-01'), end: 'Now', includeStart: true },
+            { start: undefined, end: 'Now', endOffset: { years: -20 } },
+        ],
+    },
+    prevResults: {
+        action: 'Clear',
+        scope: 'All',
+    },
+});
+```
+
+#### Search by Number Ranges
+
+```typescript
+tablorCore.searchByNumbersRanges({
+    ranges: {
+        dob: [
+            { min: 3.7 },
+        ],
+    },
+    prevResults: {
+        action: 'Clear',
+        scope: 'All',
+    },
+});
+```
+
+#### Search by Exact Values
+
+```typescript
+tablorCore.searchByExactValues({
+    values: {
+        dob: [null, undefined],
+    },
+    prevResults: {
+        action: 'Clear',
+        scope: 'All',
+    },
+});
+```
+
+#### Combine Search Queries
+
+```typescript
+tablorCore.searchByStringQuery({
+    query: 'Zeeshan',
+    includeFields: ['name'],
+    prevResults: {
+        action: 'Clear',
+        scope: 'All',
+    },
+});
+
+tablorCore.searchByDateTimesRanges({
+    ranges: {
+        dob: [
+            { start: new Date('1995-01-01'), end: new Date('2005-01-01'), includeStart: true },
+        ],
+    },
+    prevResults: {
+        action: 'Keep',
+    },
+    searchTarget: {
+        scope: 'Prev',
+    },
+});
+```
+
+#### Revert Search Results of one Search
+
+To replace searched items with those not searched, use the `revertResultsAtEnd` property.
+
+```typescript
+tablorCore.searchByStringQuery({
+    query: 'Zeeshan',
+    includeFields: ['name'],
+    prevResults: {
+        action: 'Clear',
+        scope: 'All',
+    },
+    revertResultsAtEnd: true,
+})
+// This operation will get those users who do not have 'Zeeshan' in their name.
+```
+
+#### Revert Search Results of All the Performed Searches
+
+```typescript
+tablorCore.searchByStringQuery({
+    query: 'Zeeshan',
+    includeFields: ['name'],
+    prevResults: {
+        action: 'Clear',
+        scope: 'All',
+    },
+})
+
+tablorCore.searchByDateTimesRanges({
+    ranges: {
+        dob: [
+            { start: new Date('1995-01-01'), end: new Date('2005-01-01'), includeStart: true },
+        ],
+    },
+    prevResults: {
+        action: 'Keep',
+    },
+    searchTarget: {
+        scope: 'Prev',
+    },
+});
+
+tablor.searchByVoid({
+    prevResults: {
+        action: 'Keep',
+    },
+    searchTarget: {
+        scope: 'Prev',
+    },
+    revertResultsAtEnd: true,
+})
+```
+
+### 7. Select Items
+
+#### Select an Item
+
+```typescript
+tablorCore.selectItem(item, true);
+```
+
+#### Deselect an Item
+
+```typescript
+tablorCore.selectItem(item, false);
+```
+
+#### Toggle an Item's Selection
+
+```typescript
+tablorCore.selectItem(item, 'toggle');
+```
+
+#### Get Selected Items
+
+```typescript
+tablorCore.getSelectedItems();
+```
+
+#### Get Selected Items Within the Current Page
+
+```typescript
+tablorCore.getSelectedPaginatedItems();
+```
+
+### 8. Event Handling
+
+TablorCore provides events to handle user interactions and custom events.
+
+#### Subscribe to Items Removed Event
+
+```typescript
+tablorCore.$itemsRemoved.subscribe(options =>
+{
+    console.log('Items removed:', options.removedItems);
+    // Or API call to remove items from server.
+})
+```
+
+#### Subscribe to Items Updated Event
+
+```typescript
+tablorCore.$itemsUpdated.subscribe(options =>
+{
+    console.log('Items updated - after update:', options.updatedItems);
+    console.log('Items updated - before update:', options.prevUpdatedItems);
+    console.log('Items updated - update difference:', options.updatedItemsDifference);
+})
+```
+
+#### Subscribe to Page Number Changed Event
+
+```typescript
+tablorCore.$pageNbChanged.subscribe(options =>
+{
+    console.log('Page number changed - new page nb:', options.pageNb);
+    console.log('Page number changed - prev page nb:', options.prevPageNb);
+})
+```
+
+There are many more events you can subscribe to.
+But note that all of these events are also used in the `TablorCore` class,
+so `avoid marking them as completed`.
+
+---
+
+### Additional Functionalities
+
+Explore more powerful features that you can explore yourself.
+
+---
 
 ## 📄 License
 

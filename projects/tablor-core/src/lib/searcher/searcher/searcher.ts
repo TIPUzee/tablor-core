@@ -228,7 +228,7 @@ export class Searcher<T extends Item<T>>
         const targetItems = this.getTargetItems(processedOptions)
 
         let newlySearchedItems: ImmutableAugmentedItem<T>[] = searcher.search(
-            targetItems,
+            processedOptions.by === 'Void' ? this.searchResults.map(i => i) : targetItems,
             processedOptions as any,
         )
 
@@ -477,7 +477,7 @@ export class Searcher<T extends Item<T>>
     {
         if (this.getOptions().length === 0) return this.getAllItems()
 
-        if (options.searchTarget.scope === 'All')
+        if (options.searchTarget.scope === 'All' || options.by === 'Void')
             return this.getAllItems()
 
         else if (options.searchTarget.scope === 'Prev')

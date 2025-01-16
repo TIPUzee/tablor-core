@@ -1035,4 +1035,41 @@ describe('Searcher Class Tests', () =>
             )
         },
     )
+
+    test('Search items by name, then search by void to revert all searched items', () =>
+    {
+        searcher.searchByStringQuery({
+            query: 'John',
+            includeFields: ['name'],
+        })
+
+        searcher.searchByStringQuery({
+            query: 'Jane',
+            includeFields: ['name'],
+            prevResults: {
+                action: 'Keep',
+            },
+            searchTarget: {
+                scope: 'All',
+            },
+        })
+
+        searcher.searchByVoid({
+            prevResults: {
+                action: 'Keep',
+            },
+            searchTarget: {
+                scope: 'Prev',
+            },
+            revertResultsAtEnd: true,
+        })
+
+        expect(searcher.getItems()).toEqual(
+            findItems(
+                itemsStore.getItems(),
+                'name',
+                v => !v.toLowerCase().includes('john') && !v.toLowerCase().includes('jane'),
+            ),
+        )
+    })
 })
