@@ -1,7 +1,13 @@
-# Tablor Core - Stable 🌟
+# Tablor-Core - Stable 🌟
 
 **Create beautiful datatables, grid views, and more effortlessly with Tablor-Core!**  
 Leverage powerful features already implemented—you just need to focus on your UI.
+
+---
+
+## 💡 Why Choose Tablor-Core?
+
+Tablor-Core offers an extensive toolkit for building interactive and dynamic datatables with minimal effort. Whether you're creating grid views or advanced data management UIs, Tablor-Core has you covered.
 
 --- 
 
@@ -86,16 +92,6 @@ npm install tablor-core
 
 ---
 
-## 💡 Why Choose Tablor-Core?
-
-Tablor-Core offers an extensive toolkit for building interactive and dynamic datatables with minimal effort. Whether you're creating grid views or advanced data management UIs, Tablor-Core has you covered.
-
----
-
-🔗 **Start Building with Tablor-Core Today!**
-
---- 
-
 ## How to Use Tablor-Core
 
 ### 1. Define Your Data and Fields
@@ -156,13 +152,13 @@ import { users } from './user.data';
 })
 export class MyComponent
 {
-    readonly tablorCore: TablorCore<User> = new TablorCore();
+    readonly tablor: TablorCore<User> = new TablorCore();
 
 
     constructor()
     {
-        this.tablorCore.initializeFields(userFields);
-        this.tablorCore.initializeItems(users);
+        this.tablor.initializeFields(userFields);
+        this.tablor.initializeItems(users);
     }
 }
 ```
@@ -171,26 +167,25 @@ export class MyComponent
 
 #### `my.component.html`
 
-```angular17html
-
+```html
 <table>
    <thead>
       <tr>
-         <th *ngFor="let field of tablorCore.getFieldsAsArray()">
+         <th *ngFor="let field of tablor.getFieldsAsArray()">
             {{ field.title }}
          </th>
       </tr>
    </thead>
    <tbody>
-      <tr *ngFor="let item of tablorCore.getPaginatedItems()">
-         <td *ngFor="let field of tablorCore.getFieldsAsArray()">
+      <tr *ngFor="let item of tablor.getPaginatedItems()">
+         <td *ngFor="let field of tablor.getFieldsAsArray()">
             {{ item[field.key] }}
          </td>
       </tr>
    </tbody>
 </table>
 
-<button (click)="tablorCore.setPageNb(tablorCore.getPageNb() + 1)">
+<button (click)="tablor.setPageNb(tablor.getPageNb() + 1)">
    Next Page
 </button>
 ```
@@ -200,7 +195,7 @@ export class MyComponent
 #### Sort by Single Field
 
 ```typescript
-tablorCore.sort({
+tablor.sort({
     field: 'name',
     order: 'Toggle',
     insertBehavior: {
@@ -217,12 +212,12 @@ tablorCore.sort({
 Use cases: Sort transactions by **transaction amount**, then **nested sort by transaction date**. Means if there are multiple transactions with the same amount, older transactions should show up first.
 
 ```typescript
-tablorCore.sort({
+tablor.sort({
     field: 'name',
     order: 'DESC',
 });
 
-tablorCore.sort({
+tablor.sort({
     field: 'dob',
     order: 'ASC',
 });
@@ -240,7 +235,7 @@ tablorCore.sort({
 #### Handle undefined and null values for sorting
 
 ```typescript
-tablorCore.sort({
+tablor.sort({
     field: 'dob',
     order: 'Toggle',
     prioritizeNulls: 'AlwaysLast',
@@ -263,7 +258,7 @@ tablorCore.sort({
 #### Search by String Query
 
 ```typescript
-tablorCore.searchByStringQuery({
+tablor.searchByStringQuery({
     query: 'Zeeshan Nadeem',
     includeFields: ['name', 'email'],
     prevResults: {
@@ -276,9 +271,9 @@ tablorCore.searchByStringQuery({
 #### Search by String with Non-String Conversion
 
 ```typescript
-tablorCore.searchByStringQuery({
+tablor.searchByStringQuery({
     query: 'Zeeshan 31 Mar',
-    includeFields: ['name', 'email', 'dob', 'cgpa'],
+    includeFields: ['name', 'dob'],
     convertToString: {
         string: s => s,
         number: n => n.toString(),
@@ -299,7 +294,7 @@ tablorCore.searchByStringQuery({
 #### Search by Date Ranges
 
 ```typescript
-tablorCore.searchByDateTimesRanges({
+tablor.searchByDateTimesRanges({
     ranges: {
         dob: [
             { start: new Date('2020-01-01'), end: 'Now', includeStart: true },
@@ -316,9 +311,9 @@ tablorCore.searchByDateTimesRanges({
 #### Search by Number Ranges
 
 ```typescript
-tablorCore.searchByNumbersRanges({
+tablor.searchByNumbersRanges({
     ranges: {
-        dob: [
+        cgpa: [
             { min: 3.7 },
         ],
     },
@@ -332,7 +327,7 @@ tablorCore.searchByNumbersRanges({
 #### Search by Exact Values
 
 ```typescript
-tablorCore.searchByExactValues({
+tablor.searchByExactValues({
     values: {
         dob: [null, undefined],
     },
@@ -346,7 +341,7 @@ tablorCore.searchByExactValues({
 #### Combine Search Queries
 
 ```typescript
-tablorCore.searchByStringQuery({
+tablor.searchByStringQuery({
     query: 'Zeeshan',
     includeFields: ['name'],
     prevResults: {
@@ -355,7 +350,7 @@ tablorCore.searchByStringQuery({
     },
 });
 
-tablorCore.searchByDateTimesRanges({
+tablor.searchByDateTimesRanges({
     ranges: {
         dob: [
             { start: new Date('1995-01-01'), end: new Date('2005-01-01'), includeStart: true },
@@ -375,7 +370,7 @@ tablorCore.searchByDateTimesRanges({
 To replace searched items with those not searched, use the `revertResultsAtEnd` property.
 
 ```typescript
-tablorCore.searchByStringQuery({
+tablor.searchByStringQuery({
     query: 'Zeeshan',
     includeFields: ['name'],
     prevResults: {
@@ -390,7 +385,7 @@ tablorCore.searchByStringQuery({
 #### Revert Search Results of All the Performed Searches
 
 ```typescript
-tablorCore.searchByStringQuery({
+tablor.searchByStringQuery({
     query: 'Zeeshan',
     includeFields: ['name'],
     prevResults: {
@@ -399,7 +394,7 @@ tablorCore.searchByStringQuery({
     },
 })
 
-tablorCore.searchByDateTimesRanges({
+tablor.searchByDateTimesRanges({
     ranges: {
         dob: [
             { start: new Date('1995-01-01'), end: new Date('2005-01-01'), includeStart: true },
@@ -429,31 +424,31 @@ tablor.searchByVoid({
 #### Select an Item
 
 ```typescript
-tablorCore.selectItem(item, true);
+tablor.selectItem(item, true);
 ```
 
 #### Deselect an Item
 
 ```typescript
-tablorCore.selectItem(item, false);
+tablor.selectItem(item, false);
 ```
 
 #### Toggle an Item's Selection
 
 ```typescript
-tablorCore.selectItem(item, 'toggle');
+tablor.selectItem(item, 'toggle');
 ```
 
 #### Get Selected Items
 
 ```typescript
-tablorCore.getSelectedItems();
+tablor.getSelectedItems();
 ```
 
 #### Get Selected Items Within the Current Page
 
 ```typescript
-tablorCore.getSelectedPaginatedItems();
+tablor.getSelectedPaginatedItems();
 ```
 
 ### 8. Event Handling
@@ -463,7 +458,7 @@ TablorCore provides events to handle user interactions and custom events.
 #### Subscribe to Items Removed Event
 
 ```typescript
-tablorCore.$itemsRemoved.subscribe(options =>
+tablor.$itemsRemoved.subscribe(options =>
 {
     console.log('Items removed:', options.removedItems);
     // Or API call to remove items from server.
@@ -473,7 +468,7 @@ tablorCore.$itemsRemoved.subscribe(options =>
 #### Subscribe to Items Updated Event
 
 ```typescript
-tablorCore.$itemsUpdated.subscribe(options =>
+tablor.$itemsUpdated.subscribe(options =>
 {
     console.log('Items updated - after update:', options.updatedItems);
     console.log('Items updated - before update:', options.prevUpdatedItems);
@@ -484,7 +479,7 @@ tablorCore.$itemsUpdated.subscribe(options =>
 #### Subscribe to Page Number Changed Event
 
 ```typescript
-tablorCore.$pageNbChanged.subscribe(options =>
+tablor.$pageNbChanged.subscribe(options =>
 {
     console.log('Page number changed - new page nb:', options.pageNb);
     console.log('Page number changed - prev page nb:', options.prevPageNb);
@@ -500,6 +495,10 @@ so `avoid marking them as completed`.
 ### Additional Functionalities
 
 Explore more powerful features that you can explore yourself.
+
+--- 
+
+🔗 **Start Building with Tablor-Core Today!**
 
 ---
 
