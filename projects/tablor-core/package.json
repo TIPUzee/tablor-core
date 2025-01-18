@@ -1,6 +1,6 @@
 {
     "name": "tablor-core",
-    "version": "1.0.2-w",
+    "version": "1.0.2-y",
     "description": "Core features for data tables, grids, and advanced search, pagination, and sorting in Angular.",
     "keywords": [
         "angular",

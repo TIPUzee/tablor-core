@@ -201,7 +201,6 @@ describe('Searcher Class Tests', () =>
         ])
     })
 
-    // TODO: Implement query searching in date fields
     test('Search by query, type of date (searching types include Date)', () =>
     {
         searcher.searchByStringQuery({
@@ -209,6 +208,21 @@ describe('Searcher Class Tests', () =>
             convertToString: {
                 date: d => d.toISOString(),
             },
+        })
+
+        expect(searcher.getItems()).toEqual([
+            expect.objectContaining(SampleItems[2]),
+        ])
+    })
+
+    test('Search by query, type of date, breaking the date string by customer word separator', () =>
+    {
+        searcher.searchByStringQuery({
+            query: '17 5',
+            convertToString: {
+                date: d => d.toLocaleDateString(),
+            },
+            wordSeparators: [' ', '/'],
         })
 
         expect(searcher.getItems()).toEqual([

@@ -197,7 +197,7 @@ export class StringQuerySearcher<T extends Item<T>>
         isCaseSensitive: boolean,
     ): (query: string) => (string)[]
     {
-        const wordSeparatorsAsFn = wordSeparators.map(separator =>
+        const wordsSeparatorFns = wordSeparators.map(separator =>
         {
             if (typeof separator === 'string')
                 return (query: string) => query.split(separator)
@@ -213,9 +213,10 @@ export class StringQuerySearcher<T extends Item<T>>
         {
             let words: string[] = [query]
 
-            wordSeparatorsAsFn.forEach(
-                wordSeparatorFn => words.splice(0, words.length, ...wordSeparatorFn(query)),
-            )
+            for (const separatorFn of wordsSeparatorFns)
+            {
+                words = words.map(word => separatorFn(word)).flat()
+            }
 
             if (ignoreWhitespace)
                 words = words.map(word => word.trim())
