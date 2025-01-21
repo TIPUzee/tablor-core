@@ -13,6 +13,6 @@ Leverage powerful features already implemented—you just need to focus on your 
 
 ## 📄 License
 
-This project is licensed under the **Apache-2.0 License**.
+This project is licensed under the **MIT License**.
 
 Copyright 2025 [TIPUzee](https://github.com/TIPUzee).
