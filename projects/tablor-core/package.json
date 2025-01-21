@@ -1,6 +1,6 @@
 {
     "name": "tablor-core",
-    "version": "1.0.2-y",
+    "version": "1.0.2-z",
     "description": "Core features for data tables, grids, and advanced search, pagination, and sorting in Angular.",
     "keywords": [
         "angular",
@@ -24,10 +24,10 @@
         "angular-datatables",
         "angular-grids"
     ],
-    "license": "Apache-2.0",
+    "license": "MIT",
     "repository": {
         "type": "git",
-        "url": "https://github.com/TIPUzee/tablor-core.git/tree/beta/master"
+        "url": "https://github.com/TIPUzee/tablor-core.git/tree/stable"
     },
     "author": {
         "name": "Zeeshan Nadeem",

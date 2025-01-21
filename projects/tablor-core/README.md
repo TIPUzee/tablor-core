@@ -504,6 +504,6 @@ Explore more powerful features that you can explore yourself.
 
 ## 📄 License
 
-This project is licensed under the **Apache-2.0 License**.
+This project is licensed under the **MIT License**.
 
 Copyright 2025 [TIPUzee](https://github.com/TIPUzee).
